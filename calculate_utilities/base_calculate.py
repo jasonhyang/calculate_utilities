@@ -1,4 +1,3 @@
-from .base_analysis import *
 from scipy.stats import linregress
 import scipy.stats
 from scipy.sparse.linalg import svds
@@ -16,8 +15,8 @@ from scipy.cluster.hierarchy import linkage, dendrogram
 
 import pandas as pd
 
-from sbaas.resources.cookb_signalsmooth import smooth
-from sbaas.resources.legendre_smooth import legendre_smooth
+from .cookb_signalsmooth import smooth
+from .legendre_smooth import legendre_smooth
 from Bio.Statistics import lowess
 
 class base_calculate():
