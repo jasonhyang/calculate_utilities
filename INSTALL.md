@@ -7,7 +7,7 @@ Library of calculation methods using numpy, scipy, R, Matlab, and other open-sou
 
 1.	Install R
 
-2	Install Python and dependencies
+2.	Install Python and dependencies
 
 3.	Install calculate_utilities using setup tools (i.e., python3 setup.py install)
 
