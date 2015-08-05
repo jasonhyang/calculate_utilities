@@ -3,7 +3,7 @@ Library of calculation methods using numpy, scipy, R, Matlab, and other open-sou
 
 ##Douglas McCloskey
 
-###Installation using from individual packages:
+###Installation from individual packages:
 
 1.	Install R
 
