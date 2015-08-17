@@ -26,7 +26,7 @@ class r_calculate():
             r_statement = ('require(Amelia)');
             ans = robjects.r(r_statement);
         except:
-            r_statement = ('install.packages("Amelia")');
+            r_statement = ('install.packages("Amelia",dependencies=TRUE)');
             ans = robjects.r(r_statement);
             r_statement = ('library("Amelia")');
             ans = robjects.r(r_statement);
@@ -36,10 +36,10 @@ class r_calculate():
         r_statement = ('source("http://bioconductor.org/biocLite.R")');
         ans = robjects.r(r_statement);
         try:
-            r_statement = ('biocLite("BiocUpgrade")');
+            r_statement = ('biocLite("BiocUpgrade",ask=FALSE)');
             ans = robjects.r(r_statement);
         except:
-            r_statement = ('biocLite()');
+            r_statement = ('biocLite(ask=FALSE)');
             ans = robjects.r(r_statement);
         #Biobase
         try:
@@ -50,7 +50,7 @@ class r_calculate():
         except:
             r_statement = ('source("http://bioconductor.org/biocLite.R")');
             ans = robjects.r(r_statement);
-            r_statement = ('biocLite("Biobase")');
+            r_statement = ('biocLite("Biobase",ask=FALSE)');
             ans = robjects.r(r_statement);
             r_statement = ('library("Biobase")');
             ans = robjects.r(r_statement);
@@ -65,7 +65,7 @@ class r_calculate():
         except:
             r_statement = ('source("http://bioconductor.org/biocLite.R")');
             ans = robjects.r(r_statement);
-            r_statement = ('biocLite("LMGene")');
+            r_statement = ('biocLite("LMGene",ask=FALSE)');
             ans = robjects.r(r_statement);
             r_statement = ('library("LMGene")');
             ans = robjects.r(r_statement);
@@ -79,7 +79,7 @@ class r_calculate():
             r_statement = ('require(mixOmics)');
             ans = robjects.r(r_statement);
         except:
-            r_statement = ('install.packages("mixOmics")');
+            r_statement = ('install.packages("mixOmics",dependencies=TRUE)');
             ans = robjects.r(r_statement);
             r_statement = ('library("mixOmics")');
             ans = robjects.r(r_statement);
@@ -94,7 +94,7 @@ class r_calculate():
         except:
             r_statement = ('source("http://bioconductor.org/biocLite.R")');
             ans = robjects.r(r_statement);
-            r_statement = ('biocLite("pcaMethods")');
+            r_statement = ('biocLite("pcaMethods",ask=FALSE)');
             ans = robjects.r(r_statement);
             r_statement = ('library("pcaMethods")');
             ans = robjects.r(r_statement);

@@ -135,25 +135,25 @@ class base_calculate():
             data_ave_O = 0.0
             # calculate the average of the sample
             for c in data_I:
-                data_ave_O += log(c);
-            data_ave_O = exp(data_ave_O/len(data_I));
+                data_ave_O += numpy.log(c);
+            data_ave_O = numpy.exp(data_ave_O/len(data_I));
 
             data_var_O = 0.0
             #calculate the variance of the sample
             for c in data_I:
-                data_var_O += pow(log(c/data_ave_O),2);
+                data_var_O += numpy.power(numpy.log(c/data_ave_O),2);
             data_var_O = data_var_O/(len(data_I)-1); #note: we will need to take the exp()
                                                      # to get the final variance
                                                      # but leaving it this way makes the
                                                      # downstream calculations simpler
 
             #calculate the 95% confidence intervals
-            data_se = sqrt(data_var_O/len(data_I));
-            data_lb_O = exp(log(data_ave_O) - 1.96*data_se);
-            data_ub_O = exp(log(data_ave_O) + 1.96*data_se);
+            data_se = numpy.sqrt(data_var_O/len(data_I));
+            data_lb_O = numpy.exp(numpy.log(data_ave_O) - 1.96*data_se);
+            data_ub_O = numpy.exp(numpy.log(data_ave_O) + 1.96*data_se);
             
             #correct the variance for use in reporting
-            data_var_O = exp(data_var_O);
+            data_var_O = numpy.exp(data_var_O);
 
             return data_ave_O, data_var_O, data_lb_O, data_ub_O;
         except Exception as e:
