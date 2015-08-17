@@ -811,7 +811,8 @@ class r_calculate():
             data_tmp['pvalue_corrected_description'] = pvalue_adjusted_description;
         except Exception as e:
             print(e);
-            exit(-1);
+            return None;
+            #exit(-1);
         return data_tmp;
     def calculate_pca_princomp(self,data_I,cor_I = "FALSE", scores_I = "TRUE", covmat_I="NULL", na_action_I='na.omit'):
         '''PCA analysis using princomp from R
