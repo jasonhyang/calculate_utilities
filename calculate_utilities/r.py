@@ -35,8 +35,12 @@ class r_calculate():
         #Upgrade bioconductor
         r_statement = ('source("http://bioconductor.org/biocLite.R")');
         ans = robjects.r(r_statement);
-        r_statement = ('biocLite("BiocUpgrade")');
-        ans = robjects.r(r_statement);
+        try:
+            r_statement = ('biocLite("BiocUpgrade")');
+            ans = robjects.r(r_statement);
+        except:
+            r_statement = ('biocLite()');
+            ans = robjects.r(r_statement);
         #Biobase
         try:
             r_statement = ('library("Biobase")');
