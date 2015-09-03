@@ -222,6 +222,25 @@ class base_calculate():
         except Exception as e:
             print(e);
             exit(-1);
+    # convert CV to SD:
+    def convert_cv2StDev(self,data_ave_I,data_cv_I):
+        """convert the %CV to standard deviation
+        INPUT
+        data_ave_I = float, average/mean
+        data_cv_I = float, % coefficient of variation or % relative standard deviation
+        OUTPUT
+        data_stdev_O = float, standard deviation"""
+
+        try:
+            data_stdev_O = 0.0;
+            #calculate the SD of the sample
+            if not data_ave_I is None and not data_cv_I is None:
+                data_stdev_O = data_ave_I*data_cv_I/100.0;
+
+            return data_stdev_O;
+        except Exception as e:
+            print(e);
+            exit(-1);
     # calculate the confidence intervals
     def calculate_ciFromPoints(self,data_I, alpha=0.05):
         """Calculate the confidence intervals from sampled points"""
