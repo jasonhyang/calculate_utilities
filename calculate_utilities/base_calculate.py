@@ -1,4 +1,4 @@
-from scipy.stats import linregress
+﻿from scipy.stats import linregress
 import scipy.stats
 from scipy.sparse.linalg import svds
 from math import ceil
@@ -185,6 +185,40 @@ class base_calculate():
             data_ub_O = data_ave_O + h;
 
             return data_ave_O, data_var_O, data_lb_O, data_ub_O;
+        except Exception as e:
+            print(e);
+            exit(-1);
+    # calculate the mean and CV:
+    def calculate_ave_var_cv(self,data_I,confidence_I = 0.95):
+        """calculate the average, var, %cv of data
+        with 95% confidence intervals"""
+
+        try:
+            data = numpy.array(data_I);
+
+            data_ave_O = 0.0
+            # calculate the average of the sample
+            data_ave_O = numpy.mean(data);
+
+            data_var_O = 0.0
+            #calculate the variance of the sample
+            data_var_O = numpy.var(data);
+
+            #calculate the standard error of the sample
+            se = scipy.stats.sem(data)
+
+            #calculate the CV% of the sample
+            data_cv_O = 0.0;
+            if data_ave_O !=0.0:
+                numpy.std(data)/data_ave_O*100;
+
+            #calculate the 95% confidence intervals
+            n = len(data);
+            h = se * scipy.stats.t._ppf((1+confidence_I)/2., n-1)
+            data_lb_O = data_ave_O - h;
+            data_ub_O = data_ave_O + h;
+
+            return data_ave_O, data_var_O, data_cv_O, data_lb_O, data_ub_O;
         except Exception as e:
             print(e);
             exit(-1);
