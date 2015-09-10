@@ -376,11 +376,11 @@ class base_calculate():
             data_2 = numpy.power(data_2_I,2);
         elif scale_values_I:
             print("scale_values_I not recognized.  No scaling will be applied.");
-            data_1 = numpy.array(data_1_I);
-            data_2 = numpy.array(data_2_I);
+            data_1 = data_1_I;
+            data_2 = data_2_I;
         else:
-            data_1 = numpy.array(data_1_I);
-            data_2 = numpy.array(data_2_I);
+            data_1 = data_1_I;
+            data_2 = data_2_I;
         # relative, absolute, or geometric
         if type_I == 'relative':
             fold_change_O = data_2/data_1;
