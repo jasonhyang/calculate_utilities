@@ -210,7 +210,7 @@ class base_calculate():
             #calculate the CV% of the sample
             data_cv_O = 0.0;
             if data_ave_O !=0.0:
-                numpy.std(data)/data_ave_O*100;
+                data_cv_O = numpy.std(data)/data_ave_O*100;
 
             #calculate the 95% confidence intervals
             n = len(data);
