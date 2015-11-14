@@ -1,7 +1,7 @@
 ﻿from scipy.stats import linregress
 import scipy.stats
 from scipy.sparse.linalg import svds
-from math import ceil
+from math import ceil, sqrt
 
 import matplotlib.pyplot as pp
 from scipy import linspace, sin
