@@ -89,3 +89,5 @@ class calculate_clustering():
                         'pdist_metric':row_pdist_metric_I,
                         'linkage_method':row_linkage_method_I};
         return heatmap_data_O,dendrogram_col_O,dendrogram_row_O;
+    #k-means
+    #SOM
