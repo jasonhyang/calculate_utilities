@@ -13,28 +13,28 @@ class calculate_correlation():
     def __init__(self):
         self.data=[];
 
-    def convert_patternStr2List(self,pattern_I):
-        '''Convert a string pattern to a list
+    def convert_profileStr2List(self,profile_I):
+        '''Convert a string profile to a list
         INPUT:
-        pattern_I = 0-1-2-3
+        profile_I = 0-1-2-3
         OUPTPUT
-        pattern_O = [0,1,2,3]
+        profile_O = [0,1,2,3]
         '''
-        pattern_list = pattern_I.split("-");
-        pattern_O = [];
-        for p in pattern_list:
-            pattern_O.append(int(p));
-        return pattern_O;
-    def convert_patternList2Str(self,pattern_I):
-        '''Convert a list pattern to string representation
+        profile_list = profile_I.split("-");
+        profile_O = [];
+        for p in profile_list:
+            profile_O.append(int(p));
+        return profile_O;
+    def convert_profileList2Str(self,profile_I):
+        '''Convert a list profile to string representation
         INPUT:
-        pattern_I = [0,1,2,3]
+        profile_I = [0,1,2,3]
         OUPTPUT
-        pattern_O = 0-1-2-3
+        profile_O = 0-1-2-3
         '''
-        pstr = [str(x) for x in pattern_I]
-        pattern_O = '-'.join(pstr);
-        return pattern_O;
+        pstr = [str(x) for x in profile_I]
+        profile_O = '-'.join(pstr);
+        return profile_O;
     def convert_data2trend(self,data_I,
                 data_stdev_I=[],
                 data_lb_I=[],data_ub_I=[],
@@ -55,52 +55,52 @@ class calculate_correlation():
         trend_0 = list representation of a trend (e.g. [0,1,2,3])
         '''
 
-        pattern_tmp = [];
-        prev_pattern = 0;
+        profile_tmp = [];
+        prev_profile = 0;
         prev_value = 0.0
         #generate the template
 
-        #generate the pattern
+        #generate the profile
         for i,d in enumerate(data_I):
             if i==0:
-                pattern_tmp.append(prev_pattern);
+                profile_tmp.append(prev_profile);
                 prev_value = d;
                 continue;
             if criteria_I == 'difference':
                 difference = d-prev_value;
                 if numpy.abs(difference)>tol_I:
-                    if difference > 0: prev_pattern += 1;
-                    else: prev_pattern -= 1;
-                    pattern_tmp.append(prev_pattern);
+                    if difference > 0: prev_profile += 1;
+                    else: prev_profile -= 1;
+                    profile_tmp.append(prev_profile);
                 else:
-                    pattern_tmp.append(prev_pattern);
+                    profile_tmp.append(prev_profile);
             elif criteria_I == 'stdev':
                 difference = d-prev_value;
                 if prev_value - data_stdev_I[i-1] > d + data_stdev_I[i]:
-                    prev_pattern += 1;
-                    pattern_tmp.append(prev_pattern);
+                    prev_profile += 1;
+                    profile_tmp.append(prev_profile);
                 elif prev_value + data_stdev_I[i-1] < d - data_stdev_I[i]:
-                    prev_pattern -= 1;
-                    pattern_tmp.append(prev_pattern);
+                    prev_profile -= 1;
+                    profile_tmp.append(prev_profile);
                 else:
-                    pattern_tmp.append(prev_pattern);
+                    profile_tmp.append(prev_profile);
             elif criteria_I == 'lb/ub':
                 difference = d-prev_value;
                 if data_lb_I[i-1] > data_ub_I[i]:
-                    prev_pattern += 1;
-                    pattern_tmp.append(prev_pattern);
+                    prev_profile += 1;
+                    profile_tmp.append(prev_profile);
                 elif data_ub_I[i-1] < data_lb_I[i]:
-                    prev_pattern -= 1;
-                    pattern_tmp.append(prev_pattern);
+                    prev_profile -= 1;
+                    profile_tmp.append(prev_profile);
                 else:
-                    pattern_tmp.append(prev_pattern);
+                    profile_tmp.append(prev_profile);
             else:
                 print("criteria not recognized.");
             #re-initialize the previous value
             prev_value = d;
 
-        #normalize the pattern
-        trend_O = self.normalize_trend(pattern_tmp);  
+        #normalize the profile
+        trend_O = self.normalize_trend(profile_tmp);  
     def normalize_trend(self,trend_I):
         '''Normalize a trend to the range [0,inf)
         INPUT:
@@ -108,7 +108,7 @@ class calculate_correlation():
         OUTPUT:
         trend_O = list representation of a trend w/o negative numbers'''
 
-        trend_O = pattern_I;
+        trend_O = profile_I;
 
         #get the distance between the min and max values
         min_val = min(trend_I);
@@ -122,12 +122,12 @@ class calculate_correlation():
         else:
             trend_O = [0 for x in trend_I];
         return trend_O;
-    def convert_data2pattern(self,data_I,
+    def convert_data2profile(self,data_I,
                 data_stdev_I=[],
                 data_lb_I=[],data_ub_I=[],
                 tol_I=1e-4,
                 criteria_I='difference'):
-        '''Convert a data list to a pattern
+        '''Convert a data list to a profile
         INPUT:
         data_I = list of data of mean values
         data_stdev_I = list of standard deviations
@@ -139,57 +139,57 @@ class calculate_correlation():
                      "lb/ub" use the lb/ub to determine if two data points are different
                      Default = difference
         OUTPUT:
-        pattern_0 = list representation of a pattern (e.g. [0,1,2,3])
+        profile_0 = list representation of a profile (e.g. [0,1,2,3])
         '''
 
-        pattern_tmp = [];
+        profile_tmp = [];
         prev_value = 0.0
-        prev_pattern = 0;
+        prev_profile = 0;
         #generate the template scale
         scale = self.convert_data2scaleDict(data_I);
-        #generate the pattern
+        #generate the profile
         for i,d in enumerate(data_I):
             if i==0:
-                prev_pattern=scale[d];
-                pattern_tmp.append(scale[d]);
+                prev_profile=scale[d];
+                profile_tmp.append(scale[d]);
                 prev_value = d;
                 continue;
             if criteria_I == 'difference':
                 difference = d-prev_value;
                 if numpy.abs(difference)>tol_I:
-                    prev_pattern=scale[d];
-                    pattern_tmp.append(prev_pattern);
+                    prev_profile=scale[d];
+                    profile_tmp.append(prev_profile);
                 else:
-                    pattern_tmp.append(prev_pattern);
+                    profile_tmp.append(prev_profile);
             elif criteria_I == 'stdev':
                 difference = d-prev_value;
                 if prev_value - data_stdev_I[i-1] > d + data_stdev_I[i]:
-                    prev_pattern=scale[d];
-                    pattern_tmp.append(prev_pattern);
+                    prev_profile=scale[d];
+                    profile_tmp.append(prev_profile);
                 elif prev_value + data_stdev_I[i-1] < d - data_stdev_I[i]:
-                    prev_pattern=scale[d];
-                    pattern_tmp.append(prev_pattern);
+                    prev_profile=scale[d];
+                    profile_tmp.append(prev_profile);
                 else:
-                    pattern_tmp.append(prev_pattern);
+                    profile_tmp.append(prev_profile);
             elif criteria_I == 'lb/ub':
                 difference = d-prev_value;
                 if data_lb_I[i-1] > data_ub_I[i]:
-                    prev_pattern=scale[d];
-                    pattern_tmp.append(prev_pattern);
+                    prev_profile=scale[d];
+                    profile_tmp.append(prev_profile);
                 elif data_ub_I[i-1] < data_lb_I[i]:
-                    prev_pattern=scale[d];
-                    pattern_tmp.append(prev_pattern);
+                    prev_profile=scale[d];
+                    profile_tmp.append(prev_profile);
                 else:
-                    pattern_tmp.append(prev_pattern);
+                    profile_tmp.append(prev_profile);
             else:
                 print("criteria not recognized.");
             #re-initialize the previous value
             prev_value = d;
 
-        #normalize the pattern (should be normalized by default)
-        pattern_O = pattern_tmp;        
+        #normalize the profile (should be normalized by default)
+        profile_O = profile_tmp;        
 
-        return pattern_O;
+        return profile_O;
     def convert_data2scaleDict(self,data_I):
         '''convert list of numeric data to an integer scale
         INPUT:
@@ -206,45 +206,45 @@ class calculate_correlation():
             scale_O[d]=i;
         return scale_O;
        
-    def calculate_correlation_pearsonr(self,pattern_I = [],data_I = []):
-        '''Check that the pattern length matches the data length
+    def calculate_correlation_pearsonr(self,profile_I = [],data_I = []):
+        '''Check that the profile length matches the data length
         INPUT:
-        pattern_I = list representation of a pattern (e.g. [0,1,2,3])
-        data_I = list of data to correlate with the pattern
+        profile_I = list representation of a profile (e.g. [0,1,2,3])
+        data_I = list of data to correlate with the profile
         OUTPUT:
         rho_O = Pearson correlation coefficient
         pval_O = two-sided p-value for the hypthesis that the two sets of data are uncorrelated
         '''
         rho_O, pval_O = None,None;
-        if self.check_patternAndDataLength(pattern_I,data_I):
-            rho_O, pval_O = scipy.stats.pearsonr(pattern_I,data_I);
+        if self.check_profileAndDataLength(profile_I,data_I):
+            rho_O, pval_O = scipy.stats.pearsonr(profile_I,data_I);
         return rho_O, pval_O;
 
-    def calculate_correlation_spearmanr(self,pattern_I = [],data_I = []):
-        '''Check that the pattern length matches the data length
+    def calculate_correlation_spearmanr(self,profile_I = [],data_I = []):
+        '''Check that the profile length matches the data length
         INPUT:
-        pattern_I = list representation of a pattern (e.g. [0,1,2,3])
-        data_I = list of data to correlate with the pattern
+        profile_I = list representation of a profile (e.g. [0,1,2,3])
+        data_I = list of data to correlate with the profile
         OUTPUT:
         rho_O = Spearman correlation matrix or correlation coefficient
         pval_O = two-sided p-value for the hypthesis that the two sets of data are uncorrelated
         '''
         rho_O, pval_O = None,None;
-        if self.check_patternAndDataLength(pattern_I,data_I):
-            rho_O, pval_O = scipy.stats.spearmanr(pattern_I,data_I);
+        if self.check_profileAndDataLength(profile_I,data_I):
+            rho_O, pval_O = scipy.stats.spearmanr(profile_I,data_I);
         return rho_O, pval_O;
 
-    def check_patternAndDataLength(self,pattern_I,data_I):
-        '''Check that the pattern length matches the data length
+    def check_profileAndDataLength(self,profile_I,data_I):
+        '''Check that the profile length matches the data length
         INPUT:
-        pattern_I = list representation of a pattern (e.g. [0,1,2,3])
-        data_I = list of data to correlate with the pattern
+        profile_I = list representation of a profile (e.g. [0,1,2,3])
+        data_I = list of data to correlate with the profile
         OUTPUT:
         check_O = boolean, true if the lengths are the same
         '''
         check_O = False;
-        if len(pattern_I)==len(data_I):
+        if len(profile_I)==len(data_I):
             check_O = True;
         else:
-            print('pattern and data lengths do not match');
+            print('profile and data lengths do not match');
         return check_O;
