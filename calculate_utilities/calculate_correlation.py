@@ -4,8 +4,7 @@ from copy import copy
 class calculate_correlation():
     '''
     Find correlations in a dataset
-    Based on the methods described in 
-
+    Loosely based on the methods described in the following:
     Analysis of strain and regional variation in gene expression in mouse brain
     Genome Biology 2001
     Paul Pavlidis and William S Noble
@@ -143,68 +142,164 @@ class calculate_correlation():
         '''
 
         profile_tmp = [];
-        prev_value = 0.0
-        prev_profile = 0;
-        #generate the template scale
-        scale = self.convert_data2scaleDict(data_I);
+        #convert to lb/ub
+        data_lb,data_ub = self.calculate_lbAndUb(data_I,
+                data_stdev_I=data_stdev_I,
+                data_lb_I=data_lb_I,
+                data_ub_I=data_ub_I,
+                tol_I=tol_I,
+                criteria_I=criteria_I);
+        #get the range rank dictionary
+        range = self.convert_data2RangeDict(data_I,data_lb,data_ub);
         #generate the profile
         for i,d in enumerate(data_I):
-            if i==0:
-                prev_profile=scale[d];
-                profile_tmp.append(scale[d]);
-                prev_value = d;
-                continue;
-            if criteria_I == 'difference':
-                difference = d-prev_value;
-                if numpy.abs(difference)>tol_I:
-                    prev_profile=scale[d];
-                    profile_tmp.append(prev_profile);
-                else:
-                    profile_tmp.append(prev_profile);
-            elif criteria_I == 'stdev':
-                difference = d-prev_value;
-                if prev_value - data_stdev_I[i-1] > d + data_stdev_I[i]:
-                    prev_profile=scale[d];
-                    profile_tmp.append(prev_profile);
-                elif prev_value + data_stdev_I[i-1] < d - data_stdev_I[i]:
-                    prev_profile=scale[d];
-                    profile_tmp.append(prev_profile);
-                else:
-                    profile_tmp.append(prev_profile);
-            elif criteria_I == 'lb/ub':
-                difference = d-prev_value;
-                if data_lb_I[i-1] > data_ub_I[i]:
-                    prev_profile=scale[d];
-                    profile_tmp.append(prev_profile);
-                elif data_ub_I[i-1] < data_lb_I[i]:
-                    prev_profile=scale[d];
-                    profile_tmp.append(prev_profile);
-                else:
-                    profile_tmp.append(prev_profile);
-            else:
-                print("criteria not recognized.");
-            #re-initialize the previous value
-            prev_value = d;
+            profile_tmp.append(range[d]);
 
         #normalize the profile (should be normalized by default)
-        profile_O = profile_tmp;        
+        profile_O = self.normalize_profile(profile_tmp);        
 
         return profile_O;
-    def convert_data2scaleDict(self,data_I):
-        '''convert list of numeric data to an integer scale
+    def normalize_profile(self,profile_I):
+        '''Normalize a profile to the range [0,1,2,...,max) in increments of +1
+        INPUT:
+        profile_I = list representation of a profile w/ or w/o gaps between increments
+        OUTPUT:
+        profile_O = list representation of a profile w/o gaps between increments'''
+
+        profile_O = profile_I;
+
+        #get the distance between the min and max values
+        min_val = min(profile_I);
+        max_val = max(profile_I);
+        #get the number of unique values
+        unique_val = list(set(profile_I));
+        unique_val.sort();
+        unique_val_dict = {};
+        for i,uv in enumerate(unique_val):
+            unique_val_dict[uv]=i;
+        #normalize the profile
+        profile_O = [unique_val_dict[x] for x in profile_I];
+        return profile_O;
+    def convert_data2RankDict(self,data_I):
+        '''convert list of numeric data to an integer rank
         INPUT:
         data_I = list of numerics
         OUTPUT
-        scale_O = {} of data[i]:int
+        rank_O = {} of data[i]:int
         '''
-        scale_O = [];
+        rank_O = [];
         data = copy(data_I);
         data.sort(); #lowest to highest
         #make the data_dict
-        scale_O = {};
+        rank_O = {};
         for i,d in enumerate(data):
-            scale_O[d]=i;
-        return scale_O;
+            rank_O[d]=i;
+        return rank_O;
+    def calculate_lbAndUb(self,data_I,
+                data_stdev_I=[],
+                data_lb_I=[],data_ub_I=[],
+                tol_I=1e-4,
+                criteria_I='difference'):
+        '''convert list of numeric data to an integer rank
+        INPUT:
+        data_I = list of data of mean values
+        data_stdev_I = list of standard deviations
+        data_lb_I = list of lower bounds
+        data_ub_I = list of upper bounds
+        tol_I = tolerance to consider a step-difference
+        criteria_I = "difference" use the mean difference to determine if two data points are different
+                     "stdev" use the +/- stdev to determine if two data points are different
+                     "lb/ub" use the lb/ub to determine if two data points are different
+                     Default = difference
+        OUTPUT
+        data_lb_O = list of lower bounds
+        data_ub_O = list of upper bounds
+        '''
+        #calculate the lb/ub (if not given)
+        data_lb_O = [];
+        data_ub_O = [];
+        for i,d in enumerate(data_I):
+            if criteria_I == 'difference':
+                data_lb_O.append(d-tol_I);
+                data_ub_O.append(d+tol_I);
+            elif criteria_I == 'stdev':
+                data_lb_O.append(d-data_stdev_I[i]);
+                data_ub_O.append(d+data_stdev_I[i]);
+            elif criteria_I == 'lb/ub':
+                data_lb_O.append(data_lb_I[i]);
+                data_ub_O.append(data_ub_I[i]);
+            else:
+                print("criteria not recognized.");
+        return data_lb_O,data_ub_O;
+    def calculate_LBUBDifference(self,data_1_lb_I,data_1_ub_I,data_2_lb_I,data_2_ub_I):
+        '''Calculate the difference between two upper and lower bounds
+        INPUT:
+        data_1_lb_I
+        data_1_ub_I
+        data_2_lb_I
+        data_2_ub_I
+        OUTPUT:
+        significant_O = boolean, true if lb/ub do not overlab
+        distance_O = distance between the lb/ub if significant
+        direction_O = - if range 1 is greater than range 2
+                      + if range 2 is greater than range 1
+        '''
+        significant_O = False;
+        distance_O = 0.0;
+        direction_O = None;
+        if data_1_lb_I > data_2_ub_I:
+            significant_O=True;
+            distance_O = abs(data_2_ub_I-data_1_lb_I);
+            direction_O = '-';
+        elif data_1_ub_I < data_2_lb_I:
+            significant_O=True;
+            distance_O = abs(data_1_ub_I-data_2_lb_I);
+            direction_O = '+';
+        return significant_O,distance_O,direction_O;
+
+    def convert_data2RangeDict(self,data_I,
+                data_lb_I=[],data_ub_I=[]):
+        '''convert list of numeric data to an integer rank
+        INPUT:
+        data_I = list of data of mean values
+        data_lb_I = list of lower bounds
+        data_ub_I = list of upper bounds
+        OUTPUT
+        range_O = {} of data[i]:int
+        '''
+        #identify the ranges
+        ranges = [];
+        ranges_lb = [];
+        for d1_cnt,d1 in enumerate(data_I):
+            lb = data_lb_I[d1_cnt];
+            ub = data_ub_I[d1_cnt];
+            for d2_cnt,d2 in enumerate(data_I):
+                #check if the ranges are significantly different
+                significant_O,distance_O,direction_O=self.calculate_LBUBDifference(lb,ub,data_lb_I[d2_cnt],data_ub_I[d2_cnt]);
+                if significant_O: continue;
+                else:
+                    if data_ub_I[d2_cnt]>ub:
+                        #expand the ub
+                        ub = data_ub_I[d2_cnt];
+                    if data_lb_I[d2_cnt]<lb:
+                        #expand the lb
+                        lb = data_lb_I[d2_cnt];
+            if not (lb,ub) in ranges: 
+                ranges.append((lb,ub));
+                ranges_lb.append(lb);
+        #assign data points and index to each range
+        ranges_lb.sort();
+        range_lb_dict = {};
+        for i,lb in enumerate(ranges_lb):
+            range_lb_dict[lb]=i;
+        range_O  = {};
+        for d in data_I:
+            for i,range in enumerate(ranges):
+                if d<=range[1] and d>=range[0]:
+                    range_O[d]=range_lb_dict[range[0]];
+                    break;            
+        
+        return range_O;
        
     def calculate_correlation_pearsonr(self,profile_I = [],data_I = []):
         '''Check that the profile length matches the data length
