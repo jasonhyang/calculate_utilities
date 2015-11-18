@@ -3,7 +3,7 @@ class calculate_clustering():
     def __init__(self):
         self.data=[];
     # heatmap
-    def heatmap(self,data_I,row_labels_I,column_labels_I,
+    def calculate_heatmap(self,data_I,row_labels_I,column_labels_I,
                 row_pdist_metric_I='euclidean',row_linkage_method_I='complete',
                 col_pdist_metric_I='euclidean',col_linkage_method_I='complete'):
         '''Generate a heatmap using pandas and scipy'''
@@ -90,4 +90,9 @@ class calculate_clustering():
                         'linkage_method':row_linkage_method_I};
         return heatmap_data_O,dendrogram_col_O,dendrogram_row_O;
     #k-means
+    def calculate_kmeans(self):
+        '''calculate the kmeans clusters
+        sklearn.cluster.k_means(X, n_clusters, init='k-means++', precompute_distances='auto', n_init=10, max_iter=300, verbose=False, tol=0.0001, random_state=None, copy_x=True, n_jobs=1, return_n_iter=False)
+        '''
+
     #SOM

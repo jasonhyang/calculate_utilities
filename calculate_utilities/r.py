@@ -19,6 +19,7 @@ class r_calculate():
 
         #lib_loc = '"C:/Users/Douglas/Documents/Douglas/R/win-library/3.0"';
         #r_statement = ('library("Amelia",lib.loc = %s)' % lib_loc);
+
         #Amelia (missing value imputation)
         try:
             r_statement = ('library("Amelia")');
@@ -487,31 +488,6 @@ class r_calculate():
                     data_tmp['pvalue_corrected'] = None;
                     data_tmp['pvalue_corrected_description'] = None;
                     data_anova.append(data_tmp);
-                ## extract out unique sna's in order
-                #sna_set = [];
-                #for s in sna:
-                #    if not(s in sna_set):
-                #        sna_set.append(s);
-                #for c in range(len(sna_set)):
-                #    # extract out post hoc results
-                #    postHocTest_tmp = '';
-                #    PostHocTest_pvalue_tmp = None;
-                #    for r in range(len(cn_sorted)):
-                #        data_tmp = {};
-                #        data_tmp['sample_name_abbreviation'] = sna_set[c];
-                #        data_tmp['component_name'] = cn_sorted[r];
-                #        data_tmp['mean'] = mean[c];
-                #        data_tmp['var'] = var[c];
-                #        data_tmp['n'] = n[c];
-                #        data_tmp['test_stat'] = f_stat;
-                #        data_tmp['test_description'] = 'F value';
-                #        data_tmp['pvalue'] = pvalue;
-                #        data_tmp['pvalue_corrected'] = pvalue;
-                #        data_tmp['pvalue_corrected_description'] = '1-way ANOVA';
-                #        data_tmp['postHocTest'] = postHocTest
-                #        data_tmp['postHocTest_pvalue'] = postHocTest_pvalue
-                #        data_tmp['postHocTest_description'] = postHocTest_description
-                #        data_O.append(data_tmp);
                 # extract out unique sna's in order
                 for c1 in range(len(sna_set)):
                     for c2 in range(len(sna_set)):
@@ -549,10 +525,11 @@ class r_calculate():
                 exit(-1);
         return data_anova,data_pairwise;
     def calculate_pairwiseTTest(self,data_I,pooled_sd_I = "FALSE", paired_I="TRUE",padjusted_method_I = "bonferroni",alternative_I = "two.sided"):
-        '''calculate a pairwise t-test using R's built in Stats package'''
-        # padjusted_methods: ("holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none"
-        # alternative_tests: ("greater","less","two.sided")
-        # Note pooled_sd and paired cannot both be True
+        '''calculate a pairwise t-test using R's built in Stats package
+        padjusted_methods: ("holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none"
+        alternative_tests: ("greater","less","two.sided")
+        Note pooled_sd and paired cannot both be True
+        '''
 
         #make the dataFrame
         
@@ -677,10 +654,10 @@ class r_calculate():
                 exit(-1);
         return data_anova,data_pairwise;
     def calculate_twoSampleTTest(self,data_1_I, data_2_I, alternative_I = "two.sided", mu_I = 0, paired_I="TRUE", var_equal_I = "TRUE", ci_level_I = 0.95, padjusted_method_I = "bonferroni"):
-        '''calculate a two Sample t-test using R's built in Stats package'''
-        # padjusted_methods: ("holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none"
-        # alternative_tests: ("greater","less","two.sided")
-
+        '''calculate a two Sample t-test using R's built in Stats package
+        padjusted_methods: ("holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none"
+        alternative_tests: ("greater","less","two.sided")
+        '''
         #make the dataFrame
 
         #format into R matrix and list objects
@@ -743,10 +720,10 @@ class r_calculate():
             exit(-1);
         return data_tmp;
     def calculate_oneSampleTTest(self,data_1_I, alternative_I = "two.sided", mu_I = 0, paired_I="TRUE", var_equal_I = "TRUE", ci_level_I = 0.95, padjusted_method_I = "bonferroni"):
-        '''calculate a two Sample t-test using R's built in Stats package'''
-        # padjusted_methods: ("holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none"
-        # alternative_tests: ("greater","less","two.sided")
-
+        '''calculate a two Sample t-test using R's built in Stats package
+        padjusted_methods: ("holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none"
+        alternative_tests: ("greater","less","two.sided")
+        '''
         #make the dataFrame
 
         #format into R matrix and list objects
@@ -1006,3 +983,13 @@ class r_calculate():
         except Exception as e:
             print(e);
             exit(-1);
+    def calculate_plsda(self):
+        '''Perform PLS-DA
+        plsda(X, Y, ncomp = 2, max.iter = 500, tol = 1e-06, near.zero.var = TRUE)
+        perf(object,
+            method.predict = c("all", "max.dist", "centroids.dist", "mahalanobis.dist"),
+            validation = c("Mfold", "loo"),
+            folds = 10, progressBar = TRUE, near.zero.var = FALSE, ...)
+        predict(object, newdata, method = c("all", "max.dist",
+            "centroids.dist", "mahalanobis.dist"), ...)
+        '''
