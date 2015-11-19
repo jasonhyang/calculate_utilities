@@ -99,15 +99,14 @@ class calculate_correlation():
             prev_value = d;
 
         #normalize the profile
-        trend_O = self.normalize_trend(profile_tmp);  
+        trend_O = self.normalize_trend(profile_tmp); 
+        return trend_O; 
     def normalize_trend(self,trend_I):
         '''Normalize a trend to the range [0,inf)
         INPUT:
         trend_I = list representation of a trend w/ or w/o negative numbers
         OUTPUT:
         trend_O = list representation of a trend w/o negative numbers'''
-
-        trend_O = profile_I;
 
         #get the distance between the min and max values
         min_val = min(trend_I);
@@ -116,10 +115,20 @@ class calculate_correlation():
         dist=int(dist);
 
         #add the distance to each value
+        trend_tmp = [];
         if dist>0:
-            trend_O = [dist+x for x in trend_I];
+            trend_tmp = [dist+x for x in trend_I];
         else:
-            trend_O = [0 for x in trend_I];
+            trend_tmp = [0 for x in trend_I];
+
+        #check that the trend is normalized to zero
+        trend_O = [];
+        min_val = min(trend_tmp);
+        if min_val == 0:
+            trend_O = trend_tmp;
+        else:
+            trend_O = [x-min_val for x in trend_tmp];
+
         return trend_O;
     def convert_data2profile(self,data_I,
                 data_stdev_I=[],
@@ -168,7 +177,12 @@ class calculate_correlation():
             for i2,d2 in reversed(list(enumerate(data_I[0:i1]))):
                 significant,distance,direction=self.calculate_LBUBDifference(data_lb[i2],data_ub[i2],data_lb[i1],data_ub[i1]);
                 if significant:
-                    profile_tmp[i1]=range[d1];
+                    #compare to the first data point
+                    significant,distance,direction=self.calculate_LBUBDifference(data_lb[0],data_ub[0],data_lb[i1],data_ub[i1]);
+                    if significant:
+                        profile_tmp[i1]=range[d1];
+                    else:
+                        profile_tmp[i1]=range[data_I[0]];
                     break;
                 else:
                     profile_tmp[i1]=range[d2];

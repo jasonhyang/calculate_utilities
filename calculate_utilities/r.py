@@ -985,11 +985,15 @@ class r_calculate():
             exit(-1);
     def calculate_plsda(self):
         '''Perform PLS-DA
-        plsda(X, Y, ncomp = 2, max.iter = 500, tol = 1e-06, near.zero.var = TRUE)
+        plsda(X, Y, ncomp = 3, max.iter = 500, tol = 1e-06, near.zero.var = TRUE)
         perf(object,
             method.predict = c("all", "max.dist", "centroids.dist", "mahalanobis.dist"),
             validation = c("Mfold", "loo"),
-            folds = 10, progressBar = TRUE, near.zero.var = FALSE, ...)
+            folds = 10, progressBar = FALSE, near.zero.var = FALSE, ...)
         predict(object, newdata, method = c("all", "max.dist",
-            "centroids.dist", "mahalanobis.dist"), ...)
+            "centroids.dist", "mahalanobis.dist"), ...)        
+        perf(object,
+            method.predict = "all",
+            validation ="Mfold",
+            folds = 10, progressBar = FALSE, near.zero.var = FALSE, ...)
         '''
