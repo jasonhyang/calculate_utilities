@@ -148,12 +148,30 @@ class calculate_correlation():
                 data_lb_I=data_lb_I,
                 data_ub_I=data_ub_I,
                 tol_I=tol_I,
-                criteria_I=criteria_I);
+                criteria_I="difference");
         #get the range rank dictionary
         range = self.convert_data2RangeDict(data_I,data_lb,data_ub);
+        #convert to lb/ub
+        data_lb,data_ub = self.calculate_lbAndUb(data_I,
+                data_stdev_I=data_stdev_I,
+                data_lb_I=data_lb_I,
+                data_ub_I=data_ub_I,
+                tol_I=tol_I,
+                criteria_I=criteria_I);
         #generate the profile
-        for i,d in enumerate(data_I):
-            profile_tmp.append(range[d]);
+        profile_tmp=[0 for i,x in enumerate(data_I)];
+        for i1,d1 in enumerate(data_I):
+            if i1 == 0:
+                profile_tmp[i1]=range[d1];
+                continue;
+            # check if the profile is significantly different to any previous profile
+            for i2,d2 in reversed(list(enumerate(data_I[0:i1]))):
+                significant,distance,direction=self.calculate_LBUBDifference(data_lb[i2],data_ub[i2],data_lb[i1],data_ub[i1]);
+                if significant:
+                    profile_tmp[i1]=range[d1];
+                    break;
+                else:
+                    profile_tmp[i1]=range[d2];
 
         #normalize the profile (should be normalized by default)
         profile_O = self.normalize_profile(profile_tmp);        
@@ -266,6 +284,9 @@ class calculate_correlation():
         data_ub_I = list of upper bounds
         OUTPUT
         range_O = {} of data[i]:int
+        TODO:
+        1. get all ranges
+        2. determine if the range is different from any of the other ranges
         '''
         #identify the ranges
         ranges = [];
