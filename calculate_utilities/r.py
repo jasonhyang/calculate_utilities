@@ -5,6 +5,7 @@ import numpy
 
 from rpy2.robjects.packages import importr
 import rpy2.robjects as robjects
+import rpy2.rinterface as rinterface
 r = robjects.r
 
 class r_calculate():
@@ -72,8 +73,7 @@ class r_calculate():
             ans = robjects.r(r_statement);
             r_statement = ('require(LMGene)');
             ans = robjects.r(r_statement);
-        #mixOmics (plsda, pca, clustering)
-        #an alternative for plsda would be "caret"
+        #mixOmics (splsda, plsda, pca, clustering)
         try:
             r_statement = ('library("mixOmics")');
             ans = robjects.r(r_statement);
@@ -85,6 +85,21 @@ class r_calculate():
             r_statement = ('library("mixOmics")');
             ans = robjects.r(r_statement);
             r_statement = ('require(mixOmics)');
+            ans = robjects.r(r_statement);
+        #ropls (pls,opls,oplsda,plsda, pca, clustering)
+        try:
+            r_statement = ('library("ropls")');
+            ans = robjects.r(r_statement);
+            r_statement = ('require(ropls)');
+            ans = robjects.r(r_statement);
+        except:
+            r_statement = ('source("http://bioconductor.org/biocLite.R")');
+            ans = robjects.r(r_statement);
+            r_statement = ('biocLite("ropls",ask=FALSE)');
+            ans = robjects.r(r_statement);
+            r_statement = ('library("ropls")');
+            ans = robjects.r(r_statement);
+            r_statement = ('require(ropls)');
             ans = robjects.r(r_statement);
         #pcaMethods (missing value and pca analysis)
         try:
@@ -983,17 +998,355 @@ class r_calculate():
         except Exception as e:
             print(e);
             exit(-1);
-    def calculate_plsda(self):
+    def calculate_plsda_mixomics(self,data_I,factor_I= "sample_name_abbreviation",
+                        ncomp=5,max_iter=500,
+                        tol = 1e-3, near_zero_var = "TRUE",
+                        method_predict="all",validation="loo",
+                        folds = 10, progressBar = "FALSE"):
         '''Perform PLS-DA
-        plsda(X, Y, ncomp = 3, max.iter = 500, tol = 1e-06, near.zero.var = TRUE)
+        mixOmics pslda methods:
+        plsda(X, Y, ncomp = 3, max.iter = 500, tol = 1e-06, near.zero.var = TRUE)
         perf(object,
             method.predict = c("all", "max.dist", "centroids.dist", "mahalanobis.dist"),
             validation = c("Mfold", "loo"),
-            folds = 10, progressBar = FALSE, near.zero.var = FALSE, ...)
+            folds = 10, progressBar = FALSE, near.zero.var = FALSE, ...)
         predict(object, newdata, method = c("all", "max.dist",
-            "centroids.dist", "mahalanobis.dist"), ...)        
-        perf(object,
-            method.predict = "all",
-            validation ="Mfold",
-            folds = 10, progressBar = FALSE, near.zero.var = FALSE, ...)
+            "centroids.dist", "mahalanobis.dist"), ...)
+        INPUT:
+        data_I = [{}], list of data dicts from .csv or a database
+        factor_I = column of the data dict to use as the factor
+                (default = "sample_name_abbreviation")
+
         '''
+        
+
+        # format into R matrix and list objects
+        # convert data dict to matrix filling in missing values
+        # with 'NA'
+        sns = []
+        cn = []
+        for d in data_I:
+                sns.append(d['sample_name_short']);      
+                cn.append(d['component_name']);
+        sns_sorted = sorted(set(sns))
+        cn_sorted = sorted(set(cn))
+        concentrations = ['NA' for r in range(len(sns_sorted)*len(cn_sorted))];
+        #experiment_ids = ['' for r in range(len(sns_sorted)*len(cn_sorted))];
+        #time_points = ['' for r in range(len(sns_sorted)*len(cn_sorted))];
+        cnt = 0;
+        cnt_bool = True;
+        cnt2_bool = True;
+        # factor
+        sna = [];
+        cgn = [];
+        factor = [];
+        #make the concentration matrix
+        for c in cn_sorted:
+                cnt2_bool = True;
+                for s in sns_sorted:
+                    for d in data_I:
+                        if d['sample_name_short'] == s and d['component_name'] == c:
+                            if d['calculated_concentration']:
+                                concentrations[cnt] = d['calculated_concentration'];
+                                #experiment_ids[cnt] = d['experiment_id'];
+                                #time_points[cnt] = d['time_point'];
+                                if cnt_bool:
+                                    sna.append(d['sample_name_abbreviation']);
+                                    factor.append(d[factor_I]);
+                                if cnt2_bool:
+                                    cgn.append(d['component_group_name']);
+                                    cnt2_bool = False;
+                                break;
+                    cnt = cnt+1
+                cnt_bool = False;
+        # check if there were any missing values in the data set in the first place
+        mv = 0;
+        for c in concentrations:
+            if c=='NA':
+                mv += 1;
+        if mv==0:
+            # Call to R
+            try:
+                # convert lists to R matrix
+                concentrations_r = '';
+                for c in concentrations:
+                    concentrations_r = (concentrations_r + ',' + str(c));
+                concentrations_r = concentrations_r[1:];
+                r_statement = ('concentrations = c(%s)' % concentrations_r);
+                ans = robjects.r(r_statement);
+                r_statement = ('concentrations_m = matrix(concentrations, nrow = %s, ncol = %s, byrow = TRUE)' %(len(sns_sorted),len(cn_sorted))); 
+                ans = robjects.r(r_statement);
+                # convert lists to R factors
+                factor_r = '';
+                for c in factor:
+                    factor_r = (factor_r + ',' + '"' + str(c) + '"');
+                factor_r = factor_r[1:];
+                r_statement = ('factors = c(%s)' % factor_r);
+                ans = robjects.r(r_statement);
+                r_statement = ('factors_m = matrix(factors, nrow = %s, ncol = %s, byrow = TRUE)' %(len(sns_sorted),1));
+                ans = robjects.r(r_statement);
+                r_statement = ('factors_f = factor(factors_m)'); 
+                ans = robjects.r(r_statement);
+                # call plsda
+                r_statement = ('result = plsda(concentrations_m, factors_f,\
+                    ncomp=%s, max.iter=%s, tol=%s, near.zero.var=%s)' %(ncomp,max_iter,tol,near_zero_var));
+                    #need to send in the transpose
+                ans = robjects.r(r_statement);
+                #get the plsda results
+                #get the variates
+                variates = ans.rx2("variates"); 
+                #get the X and Y variates (i.e, scores in pca)
+                #columns of X are the principle variants
+                scores_x = numpy.array(variates.rx2('X'));# variates_x.shape
+                scores_y = numpy.array(variates.rx2('Y'));# variates_y.shape
+                #get the loadings
+                loadings = ans.rx2("loadings")
+                #get the X and Y loadings
+                #columns of X are the principle loadings
+                loadings_x = numpy.array(loadings.rx2('X'))
+                loadings_y = numpy.array(loadings.rx2('Y'));# variates_y.shape
+                # VIP
+                r_statement = ('result_vip = vip(result)');
+                ans = robjects.r(r_statement);
+                # get the VIPs
+                #columns of vip are the vip's of the loadings
+                vip = numpy.array(ans);
+                # cross validate the plsda model
+                r_statement = ('result_perf = perf(result, method.predict="%s",\
+                    validation="%s", folds=%s, progressBar = %s, near.zero.var=%s)'\
+                        %(method_predict,validation,folds,progressBar,"FALSE"));
+                ans = robjects.r(r_statement);
+                # get the results of the cross validation
+                # columns error_rate are the principle variants
+                # rows are the methods used
+                #      "all" = "max.dist","centroids.dist", "mahalanobis.dist"
+                error_rate = numpy.array(ans.rx2('error.rate'));
+                error_rate_var = numpy.zeros_like(error_rate);
+                for row_cnt in range(error_rate.shape[0]):
+                    for col_cnt in range(error_rate.shape[1]):
+                        if row_cnt == 0:
+                            error_rate_var[row_cnt,col_cnt]=error_rate[row_cnt,col_cnt];
+                        else:
+                            error_rate_var[row_cnt,col_cnt]=error_rate[row_cnt,col_cnt]-error_rate[row_cnt-1,col_cnt];
+                # extract out scores
+                data_scores = [];
+                cnt=0;
+                for r in range(scores_x.shape[0]):
+                    for c in range(scores_x.shape[1]):
+                        data_tmp = {};
+                        data_tmp['sample_name_short'] = sns_sorted[r];
+                        data_tmp['score'] = scores_x[r,c];
+                        data_tmp['axis'] = c+1;
+                        #data_tmp['var_proportion'] = var_proportion[c];
+                        #data_tmp['var_cumulative'] = var_cumulative[c];
+                        data_tmp['error_rate'] = error_rate[c,0];
+                        data_tmp['factor'] = factor[r];
+                        #data_tmp['experiment_id'] = experiment_ids[cnt];
+                        #data_tmp['time_point'] = time_points[cnt];
+                        data_scores.append(data_tmp);
+                        cnt+=1;
+                # extract out loadings
+                data_loadings = [];
+                cnt=0;
+                for r in range(loadings_x.shape[0]):
+                    for c in range(loadings_x.shape[1]):
+                        data_tmp = {};
+                        data_tmp['component_name'] = cn_sorted[r]; #need to double check
+                        data_tmp['component_group_name'] = cgn[r];
+                        data_tmp['loadings'] = loadings_x[r,c]; #need to double check
+                        data_tmp['axis'] = c+1;
+                        data_tmp['vip'] = vip[r,0];
+                        #data_tmp['experiment_id'] = experiment_ids[cnt];
+                        #data_tmp['time_point'] = time_points[cnt];
+                        data_loadings.append(data_tmp);
+                        cnt+=1;
+                # extract out the model performance statistics
+                data_perf = [];
+            except Exception as e:
+                print(e);
+                exit(-1);
+            return data_scores,data_loadings
+        else:
+            print('missing values found!')
+    def calculate_oplsda(self,data_I,factor_I= "sample_name_abbreviation",
+            predI = "NA",
+            orthoI = 0,
+            algoC = "default",
+            crossvalI = 10,
+            log10L = "FALSE",
+            permI = 10,
+            scaleC = "center",
+            subset = "NULL",
+            printL = "FALSE",
+            plotL = "FALSE"):
+        '''Perform (O)PLS(-DA)
+        rpols methods:
+        http://bioconductor.org/packages/release/bioc/manuals/ropls/man/ropls.pdf
+        opls(x,
+            y = NULL,
+            predI = NA,
+            orthoI = 0,
+            algoC = c("default", "nipals", "svd")[1],
+            crossvalI = 7,
+            log10L = FALSE,
+            permI = 10,
+            scaleC = c("center", "pareto", "standard")[3],
+            subset = NULL,
+            printL = TRUE,
+            plotL = TRUE,
+            .sinkC = NULL,
+            ...)
+
+        INPUT:
+        data_I = [{}], list of data dicts from .csv or a database
+        factor_I = column of the data dict to use as the factor for (O)-PLS-DA
+                (default = "sample_name_abbreviation")
+        orthoI = 0, PLS
+                 "NA", 1, 2, 3, ..., OPLS
+
+        '''
+        
+
+        # format into R matrix and list objects
+        # convert data dict to matrix filling in missing values
+        # with 'NA'
+        sns = []
+        cn = []
+        for d in data_I:
+                sns.append(d['sample_name_short']);      
+                cn.append(d['component_name']);
+        sns_sorted = sorted(set(sns))
+        cn_sorted = sorted(set(cn))
+        concentrations = ['NA' for r in range(len(sns_sorted)*len(cn_sorted))];
+        #experiment_ids = ['' for r in range(len(sns_sorted)*len(cn_sorted))];
+        #time_points = ['' for r in range(len(sns_sorted)*len(cn_sorted))];
+        cnt = 0;
+        cnt_bool = True;
+        cnt2_bool = True;
+        # factor
+        sna = [];
+        cgn = [];
+        factor = [];
+        #make the concentration matrix
+        for c in cn_sorted:
+                cnt2_bool = True;
+                for s in sns_sorted:
+                    for d in data_I:
+                        if d['sample_name_short'] == s and d['component_name'] == c:
+                            if d['calculated_concentration']:
+                                concentrations[cnt] = d['calculated_concentration'];
+                                #experiment_ids[cnt] = d['experiment_id'];
+                                #time_points[cnt] = d['time_point'];
+                                if cnt_bool:
+                                    sna.append(d['sample_name_abbreviation']);
+                                    factor.append(d[factor_I]);
+                                if cnt2_bool:
+                                    cgn.append(d['component_group_name']);
+                                    cnt2_bool = False;
+                                break;
+                    cnt = cnt+1
+                cnt_bool = False;
+        # check if there were any missing values in the data set in the first place
+        mv = 0;
+        for c in concentrations:
+            if c=='NA':
+                mv += 1;
+        if mv==0:
+            # Call to R
+            try:
+                # convert lists to R matrix
+                concentrations_r = '';
+                for c in concentrations:
+                    concentrations_r = (concentrations_r + ',' + str(c));
+                concentrations_r = concentrations_r[1:];
+                r_statement = ('concentrations = c(%s)' % concentrations_r);
+                ans = robjects.r(r_statement);
+                r_statement = ('concentrations_m = matrix(concentrations, nrow = %s, ncol = %s, byrow = TRUE)' %(len(sns_sorted),len(cn_sorted))); 
+                ans = robjects.r(r_statement);
+                # convert lists to R factors
+                factor_r = '';
+                for c in factor:
+                    factor_r = (factor_r + ',' + '"' + str(c) + '"');
+                factor_r = factor_r[1:];
+                r_statement = ('factors = c(%s)' % factor_r);
+                ans = robjects.r(r_statement);
+                r_statement = ('factors_m = matrix(factors, nrow = %s, ncol = %s, byrow = TRUE)' %(len(sns_sorted),1));
+                ans = robjects.r(r_statement);
+                r_statement = ('factors_f = factor(factors_m)'); 
+                ans = robjects.r(r_statement);
+                # call (o)plsda
+                #TODO
+                r_statement = ('result = opls(concentrations_m, y=factors_f,\
+                        predI = %s,\
+                        orthoI = %s,\
+                        algoC = %s,\
+                        crossvalI = %s,\
+                        log10L = %s,\
+                        permI = %s,\
+                        scaleC = %s,\
+                        subset = %s,\
+                        printL = %s,\
+                        plotL = %s)' %(predI,orthoI,algoC,crossvalI,log10L,permI,scaleC,subset,printL,plotL));
+                    #need to send in the transpose
+                ans = robjects.r(r_statement);
+                #get the plsda results
+                #get the scores
+                scores_x = numpy.array(ans.rx2('scoreMN'));
+                #get the loadings
+                loadings_x = numpy.array(ans.rx2('loadingMN'));
+                if orthoI !=0:
+                    #get the scores
+                    scoresortho_x = numpy.array(ans.rx2('orthoScoreMN'));
+                    #get the loadings
+                    loadingsortho_x = numpy.array(ans.rx2('orthoLoadingMN'));
+                # get the VIPs
+                vip = numpy.array(ans.rx2("vipVn")); 
+                ans = robjects.r(r_statement);
+                # get the variance of each component
+                var_std_x = numpy.array(ans.rx2("xSdVn")); 
+                var_std_y = numpy.array(ans.rx2("ySdVn")); 
+                var_proportion = numpy.power(var_std_x,2);
+                var_proportion_y = numpy.power(var_std_x,2);
+                # get model summary
+                modelDF = ans.rx2("modelDF");
+                summaryDF = ans.rx2("summaryDF");
+                # extract out scores
+                data_scores = [];
+                cnt=0;
+                for r in range(scores_x.shape[0]):
+                    for c in range(scores_x.shape[1]):
+                        data_tmp = {};
+                        data_tmp['sample_name_short'] = sns_sorted[r];
+                        data_tmp['score'] = scores_x[r,c];
+                        data_tmp['axis'] = c+1;
+                        #data_tmp['var_proportion'] = var_proportion[c];
+                        #data_tmp['var_cumulative'] = var_cumulative[c];
+                        data_tmp['error_rate'] = error_rate[c,0];
+                        data_tmp['factor'] = factor[r];
+                        #data_tmp['experiment_id'] = experiment_ids[cnt];
+                        #data_tmp['time_point'] = time_points[cnt];
+                        data_scores.append(data_tmp);
+                        cnt+=1;
+                # extract out loadings
+                data_loadings = [];
+                cnt=0;
+                for r in range(loadings_x.shape[0]):
+                    for c in range(loadings_x.shape[1]):
+                        data_tmp = {};
+                        data_tmp['component_name'] = cn_sorted[r]; #need to double check
+                        data_tmp['component_group_name'] = cgn[r];
+                        data_tmp['loadings'] = loadings_x[r,c]; #need to double check
+                        data_tmp['axis'] = c+1;
+                        data_tmp['vip'] = vip[r,0];
+                        #data_tmp['experiment_id'] = experiment_ids[cnt];
+                        #data_tmp['time_point'] = time_points[cnt];
+                        data_loadings.append(data_tmp);
+                        cnt+=1;
+                # extract out the model performance statistics
+                data_perf = [];
+            except Exception as e:
+                print(e);
+                exit(-1);
+            return data_scores,data_loadings
+        else:
+            print('missing values found!')

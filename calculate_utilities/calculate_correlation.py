@@ -60,43 +60,71 @@ class calculate_correlation():
         #generate the template
 
         #generate the profile
-        for i,d in enumerate(data_I):
-            if i==0:
-                profile_tmp.append(prev_profile);
-                prev_value = d;
+        
+        #convert to lb/ub
+        data_lb,data_ub = self.calculate_lbAndUb(data_I,
+                data_stdev_I=data_stdev_I,
+                data_lb_I=data_lb_I,
+                data_ub_I=data_ub_I,
+                tol_I=tol_I,
+                criteria_I=criteria_I);
+        #generate the profile
+        profile_tmp=[0 for i,x in enumerate(data_I)];
+        for i1,d1 in enumerate(data_I):
+            if i1 == 0:
+                profile_tmp[i1]=prev_profile;
                 continue;
-            if criteria_I == 'difference':
-                difference = d-prev_value;
-                if numpy.abs(difference)>tol_I:
-                    if difference > 0: prev_profile += 1;
-                    else: prev_profile -= 1;
-                    profile_tmp.append(prev_profile);
-                else:
-                    profile_tmp.append(prev_profile);
-            elif criteria_I == 'stdev':
-                difference = d-prev_value;
-                if prev_value - data_stdev_I[i-1] > d + data_stdev_I[i]:
+            # check if the profile is significantly different to any previous profile
+            for i2,d2 in reversed(list(enumerate(data_I[0:i1]))):
+                significant,distance,direction=self.calculate_LBUBDifference(data_lb[i2],data_ub[i2],data_lb[i1],data_ub[i1]);
+                if significant and direction == '+':
                     prev_profile += 1;
-                    profile_tmp.append(prev_profile);
-                elif prev_value + data_stdev_I[i-1] < d - data_stdev_I[i]:
+                    profile_tmp[i1]=prev_profile;
+                    break;
+                elif significant and direction == '-':
                     prev_profile -= 1;
-                    profile_tmp.append(prev_profile);
+                    profile_tmp[i1]=prev_profile;
+                    break;
                 else:
-                    profile_tmp.append(prev_profile);
-            elif criteria_I == 'lb/ub':
-                difference = d-prev_value;
-                if data_lb_I[i-1] > data_ub_I[i]:
-                    prev_profile += 1;
-                    profile_tmp.append(prev_profile);
-                elif data_ub_I[i-1] < data_lb_I[i]:
-                    prev_profile -= 1;
-                    profile_tmp.append(prev_profile);
-                else:
-                    profile_tmp.append(prev_profile);
-            else:
-                print("criteria not recognized.");
-            #re-initialize the previous value
-            prev_value = d;
+                    profile_tmp[i1]=prev_profile;
+        ##TODO: check in reverse order if it is significantly greater or less the previous sample
+        #for i,d in enumerate(data_I):
+        #    if i==0:
+        #        profile_tmp.append(prev_profile);
+        #        prev_value = d;
+        #        continue;
+        #    if criteria_I == 'difference':
+        #        difference = d-prev_value;
+        #        if numpy.abs(difference)>tol_I:
+        #            if difference > 0: prev_profile += 1;
+        #            else: prev_profile -= 1;
+        #            profile_tmp.append(prev_profile);
+        #        else:
+        #            profile_tmp.append(prev_profile);
+        #    elif criteria_I == 'stdev':
+        #        difference = d-prev_value;
+        #        if prev_value - data_stdev_I[i-1] > d + data_stdev_I[i]:
+        #            prev_profile -= 1;
+        #            profile_tmp.append(prev_profile);
+        #        elif prev_value + data_stdev_I[i-1] < d - data_stdev_I[i]:
+        #            prev_profile += 1;
+        #            profile_tmp.append(prev_profile);
+        #        else:
+        #            profile_tmp.append(prev_profile);
+        #    elif criteria_I == 'lb/ub':
+        #        difference = d-prev_value;
+        #        if data_lb_I[i-1] > data_ub_I[i]:
+        #            prev_profile -= 1;
+        #            profile_tmp.append(prev_profile);
+        #        elif data_ub_I[i-1] < data_lb_I[i]:
+        #            prev_profile += 1;
+        #            profile_tmp.append(prev_profile);
+        #        else:
+        #            profile_tmp.append(prev_profile);
+        #    else:
+        #        print("criteria not recognized.");
+            ##re-initialize the previous value
+            #prev_value = d;
 
         #normalize the profile
         trend_O = self.normalize_trend(profile_tmp); 
