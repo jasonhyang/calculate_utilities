@@ -86,6 +86,19 @@ class r_calculate():
             ans = robjects.r(r_statement);
             r_statement = ('require(mixOmics)');
             ans = robjects.r(r_statement);
+        #pls (pls, plsda, oplsda)
+        try:
+            r_statement = ('library("pls")');
+            ans = robjects.r(r_statement);
+            r_statement = ('require(pls)');
+            ans = robjects.r(r_statement);
+        except:
+            r_statement = ('install.packages("pls",dependencies=TRUE)');
+            ans = robjects.r(r_statement);
+            r_statement = ('library("pls")');
+            ans = robjects.r(r_statement);
+            r_statement = ('require(pls)');
+            ans = robjects.r(r_statement);
         #ropls (pls,opls,oplsda,plsda, pca, clustering)
         try:
             r_statement = ('library("ropls")');
@@ -1092,6 +1105,9 @@ class r_calculate():
                     ncomp=%s, max.iter=%s, tol=%s, near.zero.var=%s)' %(ncomp,max_iter,tol,near_zero_var));
                     #need to send in the transpose
                 ans = robjects.r(r_statement);
+                ##plot the plsda results
+                #r_statement = ('plotIndiv(result, ind.names = factors_f, plot.ellipse = TRUE, add.legend =TRUE)');
+                #ans = robjects.r(r_statement);
                 #get the plsda results
                 #get the variates
                 variates = ans.rx2("variates"); 
@@ -1168,7 +1184,7 @@ class r_calculate():
             return data_scores,data_loadings
         else:
             print('missing values found!')
-    def calculate_oplsda(self,data_I,factor_I= "sample_name_abbreviation",
+    def calculate_oplsda_ropl(self,data_I,factor_I= "sample_name_abbreviation",
             predI = "NA",
             orthoI = 0,
             algoC = "default",
@@ -1201,8 +1217,11 @@ class r_calculate():
         data_I = [{}], list of data dicts from .csv or a database
         factor_I = column of the data dict to use as the factor for (O)-PLS-DA
                 (default = "sample_name_abbreviation")
+                if "NULL" pca is performed
         orthoI = 0, PLS
                  "NA", 1, 2, 3, ..., OPLS
+
+        NOTE: supports only two factors
 
         '''
         
@@ -1270,9 +1289,11 @@ class r_calculate():
                 factor_r = factor_r[1:];
                 r_statement = ('factors = c(%s)' % factor_r);
                 ans = robjects.r(r_statement);
-                r_statement = ('factors_m = matrix(factors, nrow = %s, ncol = %s, byrow = TRUE)' %(len(sns_sorted),1));
-                ans = robjects.r(r_statement);
-                r_statement = ('factors_f = factor(factors_m)'); 
+                #r_statement = ('factors_m = matrix(factors, nrow = %s, ncol = %s, byrow = TRUE)' %(len(sns_sorted),1));
+                #ans = robjects.r(r_statement);
+                #r_statement = ('factors_f = factor(factors_m)'); 
+                #ans = robjects.r(r_statement);
+                r_statement = ('factors_f = factor(factors)'); 
                 ans = robjects.r(r_statement);
                 # call (o)plsda
                 #TODO
@@ -1307,7 +1328,7 @@ class r_calculate():
                 var_std_y = numpy.array(ans.rx2("ySdVn")); 
                 var_proportion = numpy.power(var_std_x,2);
                 var_proportion_y = numpy.power(var_std_x,2);
-                # get model summary
+                # get model summary (TODO)
                 modelDF = ans.rx2("modelDF");
                 summaryDF = ans.rx2("summaryDF");
                 # extract out scores
@@ -1322,6 +1343,234 @@ class r_calculate():
                         #data_tmp['var_proportion'] = var_proportion[c];
                         #data_tmp['var_cumulative'] = var_cumulative[c];
                         data_tmp['error_rate'] = error_rate[c,0];
+                        data_tmp['factor'] = factor[r];
+                        #data_tmp['experiment_id'] = experiment_ids[cnt];
+                        #data_tmp['time_point'] = time_points[cnt];
+                        data_scores.append(data_tmp);
+                        cnt+=1;
+                # extract out loadings
+                data_loadings = [];
+                cnt=0;
+                for r in range(loadings_x.shape[0]):
+                    for c in range(loadings_x.shape[1]):
+                        data_tmp = {};
+                        data_tmp['component_name'] = cn_sorted[r]; #need to double check
+                        data_tmp['component_group_name'] = cgn[r];
+                        data_tmp['loadings'] = loadings_x[r,c]; #need to double check
+                        data_tmp['axis'] = c+1;
+                        data_tmp['vip'] = vip[r,0];
+                        #data_tmp['experiment_id'] = experiment_ids[cnt];
+                        #data_tmp['time_point'] = time_points[cnt];
+                        data_loadings.append(data_tmp);
+                        cnt+=1;
+                # extract out the model performance statistics
+                data_perf = [];
+            except Exception as e:
+                print(e);
+                exit(-1);
+            return data_scores,data_loadings
+        else:
+            print('missing values found!')
+    
+    def calculate_mvr(self,data_I,
+            response_I = None,
+            factor_I= "sample_name_abbreviation",
+            ncomp = 5,
+            Y_add = "NULL",
+            scale = "TRUE",
+            validation = "LOO",
+            segments = 10,
+            method = "cppls",
+            stripped = "FALSE",
+            lower = 0.5,
+            upper = 0.5, 
+            trunc_pow = "FALSE", 
+            weights = "NULL"):
+        '''Perform (O)PLS(-DA)
+
+        mvr(formula, ncomp, Y.add, data, subset, na.action,
+        method = pls.options()$mvralg,
+        scale = FALSE, validation = c("none", "CV", "LOO"),
+        model = TRUE, x = FALSE, y = FALSE, ...)
+        plsr(..., method = pls.options()$plsralg)
+        cppls(..., Y.add, weights, method = pls.options()$cpplsalg)
+        pcr(..., method = pls.options()$pcralg)        where formula = y ~ X and data = data.frame with y and X
+        segments is the number of segments for cross validation of type "CV"
+
+        methods = 
+            "kernelpls", "widekernelpls", "simpls: partial least squares regression
+            "oscorespls": orthonogonal scores pls
+                O-PLS
+            "cppls": Canonical Powered Partial Least Squares 
+                PLS
+                PPLS
+                PLS-DA (dummy discreet response y)
+                PPLS-DA
+                CPLS
+                CPPLS
+            "svdpc": principle component regression
+
+        INPUT:
+        data_I = [{}], list of data dicts from .csv or a database
+        response_I = column of the data dict to use as the response factor for PLS
+                    (general PLS has not yet been implemented, so response_I is not currently used)
+        factor_I = column of the data dict to use as the factor for (O)-PLS-DA
+                (default = "sample_name_abbreviation")
+
+        '''
+        
+
+        # format into R matrix and list objects
+        # convert data dict to matrix filling in missing values
+        # with 'NA'
+        sns = []
+        cn = []
+        for d in data_I:
+                sns.append(d['sample_name_short']);      
+                cn.append(d['component_name']);
+        sns_sorted = sorted(set(sns))
+        cn_sorted = sorted(set(cn))
+        concentrations = ['NA' for r in range(len(sns_sorted)*len(cn_sorted))];
+        #experiment_ids = ['' for r in range(len(sns_sorted)*len(cn_sorted))];
+        #time_points = ['' for r in range(len(sns_sorted)*len(cn_sorted))];
+        cnt = 0;
+        cnt_bool = True;
+        cnt2_bool = True;
+        # factor
+        sna = [];
+        cgn = [];
+        factor = [];
+        #make the concentration matrix
+        for c in cn_sorted:
+                cnt2_bool = True;
+                for s in sns_sorted:
+                    for d in data_I:
+                        if d['sample_name_short'] == s and d['component_name'] == c:
+                            if d['calculated_concentration']:
+                                concentrations[cnt] = d['calculated_concentration'];
+                                #experiment_ids[cnt] = d['experiment_id'];
+                                #time_points[cnt] = d['time_point'];
+                                if cnt_bool:
+                                    sna.append(d['sample_name_abbreviation']);
+                                    factor.append(d[factor_I]);
+                                if cnt2_bool:
+                                    cgn.append(d['component_group_name']);
+                                    cnt2_bool = False;
+                                break;
+                    cnt = cnt+1
+                cnt_bool = False;
+        # check if there were any missing values in the data set in the first place
+        mv = 0;
+        for c in concentrations:
+            if c=='NA':
+                mv += 1;
+        if mv==0:
+            # Call to R
+            try:
+                # convert lists to R matrix
+                concentrations_r = '';
+                for c in concentrations:
+                    concentrations_r = (concentrations_r + ',' + str(c));
+                concentrations_r = concentrations_r[1:];
+                r_statement = ('concentrations = c(%s)' % concentrations_r);
+                ans = robjects.r(r_statement);
+                r_statement = ('concentrations_m = matrix(concentrations, nrow = %s, ncol = %s, byrow = TRUE)' %(len(sns_sorted),len(cn_sorted))); 
+                ans = robjects.r(r_statement);
+                # convert lists to R factors
+                if factor_I:
+                    factor_r = '';
+                    for c in factor:
+                        factor_r = (factor_r + ',' + '"' + str(c) + '"');
+                    factor_r = factor_r[1:];
+                    r_statement = ('factors = c(%s)' % factor_r);
+                    ans = robjects.r(r_statement);
+                    r_statement = ('factors_f = factor(factors)'); 
+                    ans = robjects.r(r_statement);
+                    # make the R dataframe
+                    r_statement = ('dataframe <- data.frame(concentrations_m = concentrations_m, factors_f = factors_f)'); 
+                    ans = robjects.r(r_statement);
+                    # make the dummy response for PLS-DA
+                    #r_statement = ('dummy <- I(model.matrix(~y-1, data.frame(y = factors_f)))'); 
+                    r_statement = ('dummy <- I(model.matrix(~y-1, data.frame(y = factors)))');  
+                    ans = robjects.r(r_statement);
+                    r_statement = ('dataframe$dummy <- dummy'); 
+                    ans = robjects.r(r_statement);
+                elif response_I:
+                    #TODO: response and responses_sorted
+                    response_r = '';
+                    for c in response:
+                        response_r = (response_r + ',' + '"' + str(c) + '"');
+                    response_r = response_r[1:];
+                    r_statement = ('responses = c(%s)' % response_r);
+                    ans = robjects.r(r_statement);
+                    r_statement = ('responses_m = matrix(responses, nrow = %s, ncol = %s, byrow = TRUE)' %(len(sns_sorted),len(response_sorted)));  
+                    ans = robjects.r(r_statement);
+                    # make the R dataframe
+                    r_statement = ('dataframe <- data.frame(concentrations_m = concentrations_m, responses_m = responses_m)');  
+                    ans = robjects.r(r_statement);
+                # make the formula
+                if factor_I:
+                    ##works as well (requires dummy and concentrations_m to be in the global environment)
+                    #r_statement = ('fit <- lm(dummy ~ concentrations_m)');
+                    #ans = robjects.r(r_statement);
+                    fit = 'dummy ~ concentrations_m';
+                elif response_I:
+                    fit = 'responses_m ~ concentrations_m';
+                #call mvr
+                if validation == "CV":
+                    r_statement = ('result = mvr(%s, %s, data = dataframe, scale = %s, validation = "%s", segments = %s, method = "%s", lower = %s, upper = %s,  weights = %s)'\
+                            %(fit,ncomp,scale,validation,segments,method,lower,upper,weights));
+                elif validation == "LOO":
+                    ##works as well (requires dummy and concentrations_m to be in the global environment)
+                    #r_statement = ('result = mvr(fit, %s, data = dataframe, scale = %s, validation = "%s", method = "%s", lower = %s, upper = %s,  weights = %s)'\
+                    #        %(ncomp,scale,validation,method,lower,upper,weights));
+                    # (requires dummy and concentration to be named variables in the dataframe)
+                    r_statement = ('result = mvr(%s, %s, data = dataframe, scale = %s, validation = "%s", method = "%s", lower = %s, upper = %s,  weights = %s)'\
+                            %(fit,ncomp,scale,validation,method,lower,upper,weights));
+                # adding Y.add and trunc.pow as input to mvr throws an error:
+                #r_statement = ('result = mvr(%s, %s,\
+                #        data = dataframe,\
+                #        Y.add = %s,\
+                #        scale = %s,\
+                #        validation = "%s",\
+                #        segments = %s,\
+                #        method = "%s",\
+                #        stripped = %s,\
+                #        lower = %s,\
+                #        upper = %s,\
+                #        trunc.pow = %s,\
+                #        weights = %s)' %(fit,ncomp,Y_add,scale,validation,segments,method,stripped,lower,upper,trunc_pow,weights));
+                ans = robjects.r(r_statement);
+                # plot the pls results
+                #r_statement = ('plot(result,plottype = "scores")');
+                #ans = robjects.r(r_statement);
+                #get the plsda results
+                #get the scores
+                scores_x = numpy.array(ans.rx2('scores'));
+                scores_y = numpy.array(ans.rx2('Yscores'));
+                #get the loadings
+                loadings_x = numpy.array(ans.rx2('loadings'));
+                loadings_y = numpy.array(ans.rx2('Yloadings'));
+                # get the VIPs
+                vip = numpy.array(ans.rx2("vipVn")); 
+                ans = robjects.r(r_statement);
+                # get the variance of each component
+                var_proportion = numpy.array(ans.rx2("Xvar")); 
+                var_cummulative = numpy.power('Xtotvar');
+                # get model validation
+                validation_results = ans.rx2("validation");
+                # extract out scores
+                data_scores = [];
+                cnt=0;
+                for r in range(scores_x.shape[0]):
+                    for c in range(scores_x.shape[1]):
+                        data_tmp = {};
+                        data_tmp['sample_name_short'] = sns_sorted[r];
+                        data_tmp['score'] = scores_x[r,c];
+                        data_tmp['axis'] = c+1;
+                        data_tmp['var_proportion'] = var_proportion[c];
+                        data_tmp['var_cumulative'] = var_cumulative[c];
+                        #data_tmp['error_rate'] = error_rate[c,0];
                         data_tmp['factor'] = factor[r];
                         #data_tmp['experiment_id'] = experiment_ids[cnt];
                         #data_tmp['time_point'] = time_points[cnt];
