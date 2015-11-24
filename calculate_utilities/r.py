@@ -99,6 +99,32 @@ class r_calculate():
             ans = robjects.r(r_statement);
             r_statement = ('require(pls)');
             ans = robjects.r(r_statement);
+        #spls (spls, splsda)
+        try:
+            r_statement = ('library("spls")');
+            ans = robjects.r(r_statement);
+            r_statement = ('require(spls)');
+            ans = robjects.r(r_statement);
+        except:
+            r_statement = ('install.packages("spls",dependencies=TRUE)');
+            ans = robjects.r(r_statement);
+            r_statement = ('library("spls")');
+            ans = robjects.r(r_statement);
+            r_statement = ('require(spls)');
+            ans = robjects.r(r_statement);
+        #caret (utilities for regression packages including pls and spls)
+        try:
+            r_statement = ('library("caret")');
+            ans = robjects.r(r_statement);
+            r_statement = ('require(caret)');
+            ans = robjects.r(r_statement);
+        except:
+            r_statement = ('install.packages("caret",dependencies=TRUE)');
+            ans = robjects.r(r_statement);
+            r_statement = ('library("caret")');
+            ans = robjects.r(r_statement);
+            r_statement = ('require(caret)');
+            ans = robjects.r(r_statement);
         #ropls (pls,opls,oplsda,plsda, pca, clustering)
         try:
             r_statement = ('library("ropls")');
@@ -986,26 +1012,33 @@ class r_calculate():
         else:
             print('missing values found!')
     def calculate_svm(self):
+        '''Support Vector Machine
+        requires package e1071
+        
+        Documentation:
+        tune.svm(train.x, train.y = NULL, data = list(), validation.x = NULL,
+            validation.y = NULL, ranges = NULL, predict.func = predict,
+            tunecontrol = tune.control(), ...)
+        tune.control(random = FALSE, nrepeat = 1, repeat.aggregate = min,
+            sampling = c("cross", "fix", "bootstrap"), sampling.aggregate = mean,
+            sampling.dispersion = sd,
+            cross = 10, fix = 2/3, nboot = 10, boot.size = 9/10, best.model = TRUE,
+            performances = TRUE, error.fun = NULL)
+        best.tune(...)
+        svm(x, y = NULL, scale = TRUE, type = NULL, kernel = "radial",
+            degree = 3, gamma = if (is.vector(x)) 1 else 1 / ncol(x),
+            coef0 = 0, cost = 1, nu = 0.5,
+            class.weights = NULL, cachesize = 40, tolerance = 0.001, epsilon = 0.1,
+            shrinking = TRUE, cross = 0, probability = FALSE, fitted = TRUE, seed = 1L)
+        
+        
+        '''
         # TODO
         # Call to R
         try:
             # format the data into R objects
             # call tune
             r_statement = ('concentrations_m = matrix(concentrations, nrow = %s, ncol = %s, byrow = TRUE)' %(len(cn_sorted),len(sns_sorted))); 
-            #tune.svm(train.x, train.y = NULL, data = list(), validation.x = NULL,
-            #    validation.y = NULL, ranges = NULL, predict.func = predict,
-            #    tunecontrol = tune.control(), ...)
-            #tune.control(random = FALSE, nrepeat = 1, repeat.aggregate = min,
-            #   sampling = c("cross", "fix", "bootstrap"), sampling.aggregate = mean,
-            #   sampling.dispersion = sd,
-            #   cross = 10, fix = 2/3, nboot = 10, boot.size = 9/10, best.model = TRUE,
-            #   performances = TRUE, error.fun = NULL)
-            #best.tune(...)
-            #svm(x, y = NULL, scale = TRUE, type = NULL, kernel = "radial",
-            #   degree = 3, gamma = if (is.vector(x)) 1 else 1 / ncol(x),
-            #   coef0 = 0, cost = 1, nu = 0.5,
-            #   class.weights = NULL, cachesize = 40, tolerance = 0.001, epsilon = 0.1,
-            #   shrinking = TRUE, cross = 0, probability = FALSE, fitted = TRUE, seed = 1L)
             ans = robjects.r(r_statement);
             return
         except Exception as e:
@@ -1017,6 +1050,7 @@ class r_calculate():
                         method_predict="all",validation="loo",
                         folds = 10, progressBar = "FALSE"):
         '''Perform PLS-DA
+
         mixOmics pslda methods:
         plsda(X, Y, ncomp = 3, max.iter = 500, tol = 1e-06, near.zero.var = TRUE)
         perf(object,
@@ -1025,10 +1059,13 @@ class r_calculate():
             folds = 10, progressBar = FALSE, near.zero.var = FALSE, ...)
         predict(object, newdata, method = c("all", "max.dist",
             "centroids.dist", "mahalanobis.dist"), ...)
+
         INPUT:
         data_I = [{}], list of data dicts from .csv or a database
         factor_I = column of the data dict to use as the factor
                 (default = "sample_name_abbreviation")
+
+        STATUS: Working, need to finalize extracting the scores, loadings, and model performance for output
 
         '''
         
@@ -1087,7 +1124,7 @@ class r_calculate():
                 concentrations_r = concentrations_r[1:];
                 r_statement = ('concentrations = c(%s)' % concentrations_r);
                 ans = robjects.r(r_statement);
-                r_statement = ('concentrations_m = matrix(concentrations, nrow = %s, ncol = %s, byrow = TRUE)' %(len(sns_sorted),len(cn_sorted))); 
+                r_statement = ('concentrations_m = matrix(concentrations, nrow = %s, ncol = %s, byrow = TRUE)' %(len(cn_sorted),len(sns_sorted))); 
                 ans = robjects.r(r_statement);
                 # convert lists to R factors
                 factor_r = '';
@@ -1101,7 +1138,7 @@ class r_calculate():
                 r_statement = ('factors_f = factor(factors_m)'); 
                 ans = robjects.r(r_statement);
                 # call plsda
-                r_statement = ('result = plsda(concentrations_m, factors_f,\
+                r_statement = ('result = plsda(t(concentrations_m), factors_f,\
                     ncomp=%s, max.iter=%s, tol=%s, near.zero.var=%s)' %(ncomp,max_iter,tol,near_zero_var));
                     #need to send in the transpose
                 ans = robjects.r(r_statement);
@@ -1223,6 +1260,8 @@ class r_calculate():
 
         NOTE: supports only two factors
 
+        STATUS: Working, need to finalize extracting the scores, loadings, and model performance for output
+
         '''
         
 
@@ -1280,7 +1319,7 @@ class r_calculate():
                 concentrations_r = concentrations_r[1:];
                 r_statement = ('concentrations = c(%s)' % concentrations_r);
                 ans = robjects.r(r_statement);
-                r_statement = ('concentrations_m = matrix(concentrations, nrow = %s, ncol = %s, byrow = TRUE)' %(len(sns_sorted),len(cn_sorted))); 
+                r_statement = ('concentrations_m = matrix(concentrations, nrow = %s, ncol = %s, byrow = TRUE)' %(len(cn_sorted),len(sns_sorted))); 
                 ans = robjects.r(r_statement);
                 # convert lists to R factors
                 factor_r = '';
@@ -1297,7 +1336,7 @@ class r_calculate():
                 ans = robjects.r(r_statement);
                 # call (o)plsda
                 #TODO
-                r_statement = ('result = opls(concentrations_m, y=factors_f,\
+                r_statement = ('result = opls(t(concentrations_m), y=factors_f,\
                         predI = %s,\
                         orthoI = %s,\
                         algoC = %s,\
@@ -1328,7 +1367,9 @@ class r_calculate():
                 var_std_y = numpy.array(ans.rx2("ySdVn")); 
                 var_proportion = numpy.power(var_std_x,2);
                 var_proportion_y = numpy.power(var_std_x,2);
-                # get model summary (TODO)
+                # get model summary
+                #TODO:
+                #---------------------------------
                 modelDF = ans.rx2("modelDF");
                 summaryDF = ans.rx2("summaryDF");
                 # extract out scores
@@ -1365,20 +1406,22 @@ class r_calculate():
                         cnt+=1;
                 # extract out the model performance statistics
                 data_perf = [];
+                #---------------------------------
+                #END TODO:
             except Exception as e:
                 print(e);
                 exit(-1);
             return data_scores,data_loadings
         else:
             print('missing values found!')
-    
     def calculate_mvr(self,data_I,
             response_I = None,
             factor_I= "sample_name_abbreviation",
             ncomp = 5,
             Y_add = "NULL",
             scale = "TRUE",
-            validation = "LOO",
+            #validation = "LOO",
+            validation = "CV",
             segments = 10,
             method = "cppls",
             stripped = "FALSE",
@@ -1386,7 +1429,13 @@ class r_calculate():
             upper = 0.5, 
             trunc_pow = "FALSE", 
             weights = "NULL"):
-        '''Perform (O)PLS(-DA)
+        '''Perform PLS(-DA)
+
+        pls is used for principle component regression, partial least squares regression, and Canonical powered partial least squares regression
+            NOTE: oscorespls implements the NIPALS algorithm, which is also used in many other packages including scikit-learn
+        pls is used for PLS-DA via converting the factor vector into a dummy response variable (the plsda function in caret automates this task)
+        spls is used for sparse versions of pls
+        caret provides utility functions for pls and spls (e.g., calculating the vip)
 
         mvr(formula, ncomp, Y.add, data, subset, na.action,
         method = pls.options()$mvralg,
@@ -1394,12 +1443,15 @@ class r_calculate():
         model = TRUE, x = FALSE, y = FALSE, ...)
         plsr(..., method = pls.options()$plsralg)
         cppls(..., Y.add, weights, method = pls.options()$cpplsalg)
-        pcr(..., method = pls.options()$pcralg)        where formula = y ~ X and data = data.frame with y and X
-        segments is the number of segments for cross validation of type "CV"
+        pcr(..., method = pls.options()$pcralg)
 
-        methods = 
-            "kernelpls", "widekernelpls", "simpls: partial least squares regression
-            "oscorespls": orthonogonal scores pls
+        where formula = y ~ X and data = data.frame with y and X
+
+        where segments is the number of segments for cross validation of type "CV"
+
+        where methods = 
+            "kernelpls", "widekernelpls", "simpls": partial least squares regression
+            "oscorespls": orthonogonal scores pls (uses the NIPALS algorithm)
                 O-PLS
             "cppls": Canonical Powered Partial Least Squares 
                 PLS
@@ -1416,6 +1468,13 @@ class r_calculate():
                     (general PLS has not yet been implemented, so response_I is not currently used)
         factor_I = column of the data dict to use as the factor for (O)-PLS-DA
                 (default = "sample_name_abbreviation")
+
+        TESTING:
+        import rpy2.rinterface as ri
+        dummy_array = numpy.array(ri.globalenv.get('dummy'));
+        concentrations_array = numpy.array(ri.globalenv.get('concentrations_m'));
+
+        STATUS: Working, need to finalize extracting the scores, loadings, and model performance for output
 
         '''
         
@@ -1474,7 +1533,9 @@ class r_calculate():
                 concentrations_r = concentrations_r[1:];
                 r_statement = ('concentrations = c(%s)' % concentrations_r);
                 ans = robjects.r(r_statement);
-                r_statement = ('concentrations_m = matrix(concentrations, nrow = %s, ncol = %s, byrow = TRUE)' %(len(sns_sorted),len(cn_sorted))); 
+                r_statement = ('concentrations_m = matrix(concentrations, nrow = %s, ncol = %s, byrow = TRUE)' %(len(cn_sorted),len(sns_sorted))); 
+                ans = robjects.r(r_statement);
+                r_statement = ('concentrations_mt = t(concentrations_m)'); 
                 ans = robjects.r(r_statement);
                 # convert lists to R factors
                 if factor_I:
@@ -1487,11 +1548,11 @@ class r_calculate():
                     r_statement = ('factors_f = factor(factors)'); 
                     ans = robjects.r(r_statement);
                     # make the R dataframe
-                    r_statement = ('dataframe <- data.frame(concentrations_m = concentrations_m, factors_f = factors_f)'); 
+                    r_statement = ('dataframe <- data.frame(concentrations_mt = t(concentrations_m), factors_f = factors_f)'); 
                     ans = robjects.r(r_statement);
                     # make the dummy response for PLS-DA
-                    #r_statement = ('dummy <- I(model.matrix(~y-1, data.frame(y = factors_f)))'); 
-                    r_statement = ('dummy <- I(model.matrix(~y-1, data.frame(y = factors)))');  
+                    r_statement = ('dummy <- I(model.matrix(~y-1, data.frame(y = factors_f)))'); 
+                    #r_statement = ('dummy <- I(model.matrix(~y-1, data.frame(y = factors)))');  
                     ans = robjects.r(r_statement);
                     r_statement = ('dataframe$dummy <- dummy'); 
                     ans = robjects.r(r_statement);
@@ -1503,19 +1564,21 @@ class r_calculate():
                     response_r = response_r[1:];
                     r_statement = ('responses = c(%s)' % response_r);
                     ans = robjects.r(r_statement);
-                    r_statement = ('responses_m = matrix(responses, nrow = %s, ncol = %s, byrow = TRUE)' %(len(sns_sorted),len(response_sorted)));  
+                    r_statement = ('responses_m = matrix(responses, nrow = %s, ncol = %s, byrow = TRUE)' %(len(cn_sorted),len(sns_sorted)));  
+                    ans = robjects.r(r_statement);
+                    r_statement = ('responses_mt = t(concentrations_m)');  
                     ans = robjects.r(r_statement);
                     # make the R dataframe
-                    r_statement = ('dataframe <- data.frame(concentrations_m = concentrations_m, responses_m = responses_m)');  
+                    r_statement = ('dataframe <- data.frame(concentrations_mt = t(concentrations_m), responses_mt = t(responses_m))');  
                     ans = robjects.r(r_statement);
                 # make the formula
                 if factor_I:
                     ##works as well (requires dummy and concentrations_m to be in the global environment)
                     #r_statement = ('fit <- lm(dummy ~ concentrations_m)');
                     #ans = robjects.r(r_statement);
-                    fit = 'dummy ~ concentrations_m';
+                    fit = 'dummy ~ concentrations_mt';
                 elif response_I:
-                    fit = 'responses_m ~ concentrations_m';
+                    fit = 'responses_mt ~ concentrations_mt';
                 #call mvr
                 if validation == "CV":
                     r_statement = ('result = mvr(%s, %s, data = dataframe, scale = %s, validation = "%s", segments = %s, method = "%s", lower = %s, upper = %s,  weights = %s)'\
@@ -1546,19 +1609,68 @@ class r_calculate():
                 #ans = robjects.r(r_statement);
                 #get the plsda results
                 #get the scores
-                scores_x = numpy.array(ans.rx2('scores'));
+                scores_x = numpy.array(ans.rx2('scores')); #dim 1 = samples, dim 2 = comp
                 scores_y = numpy.array(ans.rx2('Yscores'));
                 #get the loadings
-                loadings_x = numpy.array(ans.rx2('loadings'));
+                loadings_x = numpy.array(ans.rx2('loadings')); #dim 1 = features, dim 2 = comp
                 loadings_y = numpy.array(ans.rx2('Yloadings'));
-                # get the VIPs
-                vip = numpy.array(ans.rx2("vipVn")); 
-                ans = robjects.r(r_statement);
                 # get the variance of each component
-                var_proportion = numpy.array(ans.rx2("Xvar")); 
-                var_cummulative = numpy.power('Xtotvar');
+                var_x = numpy.array(ans.rx2("Xvar")); #dim 1 = comp
+                var_x_total = numpy.array(ans.rx2('Xtotvar'));
                 # get model validation
                 validation_results = ans.rx2("validation");
+                press = numpy.array(validation_results.rx2('PRESS'));
+                adj = numpy.array(validation_results.rx2('adj'));
+                # get the fit residuals
+                residuals = numpy.array(ans.rx2("residuals"));
+                # get the VIPs
+                r_statement = ('varImp(result)'); #requires caret
+                ans = robjects.r(r_statement);
+                vip = numpy.array(ans); #dim 1 = factors/responses, dim 2 = features
+                vip_reduced = numpy.zeros_like(vip[0,:]);
+                for j in range(vip.shape[1]):
+                    vip_reduced[j]=vip[:,j].sum();
+                # get the 
+                r_statement = ('explvar(result)'); #var_ex = (1-(var_x_total[0]-var_x)/var_x_total[0])*100
+                ans = robjects.r(r_statement);
+                var_proportion = numpy.array(ans); 
+                # get the model cross validation statistics
+                # dim 1 = "CV", "adjCV"
+                # dim 2 = response variables
+                #           e.g. for 6 factors/response variables, there should be 6 rows
+                # dim 3 = models from ncomps = no comps, ncomps[1]:ncomps[length(ncomps)]
+                #           e.g. for 5 comps there should be 6 models
+                r_statement = ('RMSEP(result)'); # root mean squared error
+                ans = robjects.r(r_statement);
+                rmsep = numpy.array(ans.rx2('val'))[1]; #adjCV
+                rmsep_reduced = numpy.zeros_like(rmsep[0,:]);
+                for j in range(rmsep.shape[1]):
+                    rmsep_reduced[j]=rmsep[:,j].sum();
+                r_statement = ('MSEP(result)'); # mean squared error
+                ans = robjects.r(r_statement);
+                msep = numpy.array(ans.rx2('val'))[1]; #adjCV
+                msep_reduced = numpy.zeros_like(msep[0,:]);
+                for j in range(msep.shape[1]):
+                    msep_reduced[j]=msep[:,j].sum();
+                #calculate the SSE,SST,and Q2 (adjCV only)
+                r_statement = ('mvrValstats(result, estimate="CV")');
+                ans = robjects.r(r_statement);
+                sse = numpy.array(ans.rx2('SSE'))[0]; #dim 1 = "CV"
+                sst = numpy.array(ans.rx2('SST'))[0];
+                q2 = 1-(sse/sst);
+                sse_reduced = numpy.zeros_like(sst);
+                sst_reduced = numpy.zeros_like(sst);
+                for j in range(sse.shape[1]):
+                    sse_reduced[j]=sse[:,j].sum();
+                    sst_reduced[j]=sse.shape[0]*sst[j];
+                q2_reduced = 1-(sse_reduced/sst_reduced);
+                #calculate the R2
+                residuals_reduced = numpy.zeros_like(sse_reduced);
+                press_reduced[0]=max(sse_reduced);
+                for j in range(press.shape[1]-1):
+                    press_reduced[j+1]=press[:,j].sum();
+                q2_reduced = 1-(press_reduced/sse_reduced);
+
                 # extract out scores
                 data_scores = [];
                 cnt=0;
@@ -1569,9 +1681,11 @@ class r_calculate():
                         data_tmp['score'] = scores_x[r,c];
                         data_tmp['axis'] = c+1;
                         data_tmp['var_proportion'] = var_proportion[c];
-                        data_tmp['var_cumulative'] = var_cumulative[c];
+                        #data_tmp['var_cumulative'] = var_cumulative[c];
                         #data_tmp['error_rate'] = error_rate[c,0];
                         data_tmp['factor'] = factor[r];
+                        data_tmp['method'] = method;
+                        data_tmp['scale'] = scale;
                         #data_tmp['experiment_id'] = experiment_ids[cnt];
                         #data_tmp['time_point'] = time_points[cnt];
                         data_scores.append(data_tmp);
@@ -1580,22 +1694,104 @@ class r_calculate():
                 data_loadings = [];
                 cnt=0;
                 for r in range(loadings_x.shape[0]):
-                    for c in range(loadings_x.shape[1]):
+                    for c in range(loadings_x.shape[1]): #comp
                         data_tmp = {};
                         data_tmp['component_name'] = cn_sorted[r]; #need to double check
                         data_tmp['component_group_name'] = cgn[r];
                         data_tmp['loadings'] = loadings_x[r,c]; #need to double check
                         data_tmp['axis'] = c+1;
-                        data_tmp['vip'] = vip[r,0];
+                        data_tmp['vip'] = vip_reduced[r];
+                        data_tmp['method'] = method;
+                        data_tmp['scale'] = scale;
                         #data_tmp['experiment_id'] = experiment_ids[cnt];
                         #data_tmp['time_point'] = time_points[cnt];
                         data_loadings.append(data_tmp);
                         cnt+=1;
                 # extract out the model performance statistics
                 data_perf = [];
+                for i in range(len(msep_reduced)): #model
+                    data_tmp = {};
+                    data_tmp['MSEP'] = msep_reduced[i];
+                    data_tmp['RMSEP'] = rmsep_reduced[i];
+                    data_tmp['R2'] = r2_reduced[i]
+                    #data_tmp['Q2'] = c+1;
+                    data_tmp['ncomp'] = i;
+                    data_tmp['validation'] = validation;
+                    data_tmp['segments'] = segments; #None if LOO
+                    data_tmp['estimate'] = "adjCV";
+                    data_tmp['method'] = method;
+                    data_tmp['scale'] = scale;
+                    data_perf.append(data_tmp);
             except Exception as e:
                 print(e);
                 exit(-1);
-            return data_scores,data_loadings
+            return data_scores,data_loadings,data_perf
         else:
             print('missing values found!')
+    def calculate_decisionTree(self):
+        '''calculate a decision tree
+        requires the rpart package
+        e.g. cart_model <- rpart(y  x1 + x2, data=as.data.frame(cbind(y,x1,x2)), method="class")
+        '''
+        # TODO
+        # Call to R
+        try:
+            # format the data into R objects
+            # call tune
+            r_statement = ('concentrations_m = matrix(concentrations, nrow = %s, ncol = %s, byrow = TRUE)' %(len(cn_sorted),len(sns_sorted))); 
+            ans = robjects.r(r_statement);
+            return
+        except Exception as e:
+            print(e);
+            exit(-1);
+
+    def calculate_neuralNetwork(self):
+        '''generate a neural network
+        requires the neuralnet package
+        e.g. http://www.r-bloggers.com/fitting-a-neural-network-in-r-neuralnet-package/
+        '''
+        # TODO
+        # Call to R
+        try:
+            # format the data into R objects
+            # call tune
+            r_statement = ('concentrations_m = matrix(concentrations, nrow = %s, ncol = %s, byrow = TRUE)' %(len(cn_sorted),len(sns_sorted))); 
+            ans = robjects.r(r_statement);
+            return
+        except Exception as e:
+            print(e);
+            exit(-1);
+
+    def calculate_geneticAlgorithm(self):
+        '''genetic algorithm
+        requires the GA or genalg package
+        e.g. http://www.r-bloggers.com/genetic-algorithms-a-simple-r-example/
+        '''
+        # TODO
+        # Call to R
+        try:
+            # format the data into R objects
+            # call tune
+            r_statement = ('concentrations_m = matrix(concentrations, nrow = %s, ncol = %s, byrow = TRUE)' %(len(cn_sorted),len(sns_sorted))); 
+            ans = robjects.r(r_statement);
+            return
+        except Exception as e:
+            print(e);
+            exit(-1);
+
+    def calculate_generalizedSimulatedAnnealing(self):
+        '''generalized simulated annealing
+        requires the GenSA package
+        e.g. 
+        '''
+        # TODO
+        # Call to R
+        try:
+            # format the data into R objects
+            # call tune
+            r_statement = ('concentrations_m = matrix(concentrations, nrow = %s, ncol = %s, byrow = TRUE)' %(len(cn_sorted),len(sns_sorted))); 
+            ans = robjects.r(r_statement);
+            return
+        except Exception as e:
+            print(e);
+            exit(-1);
