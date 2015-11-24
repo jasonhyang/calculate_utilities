@@ -1634,6 +1634,12 @@ class r_calculate():
                 r_statement = ('explvar(result)'); #var_ex = (1-(var_x_total[0]-var_x)/var_x_total[0])*100
                 ans = robjects.r(r_statement);
                 var_proportion = numpy.array(ans); 
+                var_cumulative = numpy.zeros_like(var_proportion);
+                for i in range(len(var_proportion)):
+                    if i==0:
+                        var_cumulative[i] = var_proportion[i];
+                    else:
+                        var_cumulative[i] = var_proportion[i]+var_cumulative[i-1];
                 # get the model cross validation statistics
                 # dim 1 = "CV", "adjCV"
                 # dim 2 = response variables
@@ -1652,10 +1658,10 @@ class r_calculate():
                 msep_reduced = numpy.zeros_like(msep[0,:]);
                 for j in range(msep.shape[1]):
                     msep_reduced[j]=msep[:,j].sum();
-                #calculate the SSE,SST,and Q2 (adjCV only)
+                #calculate the Q2
                 r_statement = ('mvrValstats(result, estimate="CV")');
                 ans = robjects.r(r_statement);
-                sse = numpy.array(ans.rx2('SSE'))[0]; #dim 1 = "CV"
+                sse = numpy.array(ans.rx2('SSE'))[0];
                 sst = numpy.array(ans.rx2('SST'))[0];
                 q2 = 1-(sse/sst);
                 sse_reduced = numpy.zeros_like(sst);
@@ -1665,11 +1671,17 @@ class r_calculate():
                     sst_reduced[j]=sse.shape[0]*sst[j];
                 q2_reduced = 1-(sse_reduced/sst_reduced);
                 #calculate the R2
-                residuals_reduced = numpy.zeros_like(sse_reduced);
-                press_reduced[0]=max(sse_reduced);
-                for j in range(press.shape[1]-1):
-                    press_reduced[j+1]=press[:,j].sum();
-                q2_reduced = 1-(press_reduced/sse_reduced);
+                r_statement = ('mvrValstats(result, estimate="train")');
+                ans = robjects.r(r_statement);
+                sse = numpy.array(ans.rx2('SSE'))[0];
+                sst = numpy.array(ans.rx2('SST'))[0];
+                r2 = 1-(sse/sst);
+                sse_reduced = numpy.zeros_like(sst);
+                sst_reduced = numpy.zeros_like(sst);
+                for j in range(sse.shape[1]):
+                    sse_reduced[j]=sse[:,j].sum();
+                    sst_reduced[j]=sse.shape[0]*sst[j];
+                r2_reduced = 1-(sse_reduced/sst_reduced);
 
                 # extract out scores
                 data_scores = [];
@@ -1678,12 +1690,11 @@ class r_calculate():
                     for c in range(scores_x.shape[1]):
                         data_tmp = {};
                         data_tmp['sample_name_short'] = sns_sorted[r];
+                        data_tmp['factor'] = factor[r];
                         data_tmp['score'] = scores_x[r,c];
                         data_tmp['axis'] = c+1;
                         data_tmp['var_proportion'] = var_proportion[c];
-                        #data_tmp['var_cumulative'] = var_cumulative[c];
-                        #data_tmp['error_rate'] = error_rate[c,0];
-                        data_tmp['factor'] = factor[r];
+                        data_tmp['var_cumulative'] = var_cumulative[c];
                         data_tmp['method'] = method;
                         data_tmp['scale'] = scale;
                         #data_tmp['experiment_id'] = experiment_ids[cnt];
@@ -1714,11 +1725,10 @@ class r_calculate():
                     data_tmp['MSEP'] = msep_reduced[i];
                     data_tmp['RMSEP'] = rmsep_reduced[i];
                     data_tmp['R2'] = r2_reduced[i]
-                    #data_tmp['Q2'] = c+1;
+                    data_tmp['Q2'] = q2_reduced[i];
                     data_tmp['ncomp'] = i;
                     data_tmp['validation'] = validation;
                     data_tmp['segments'] = segments; #None if LOO
-                    data_tmp['estimate'] = "adjCV";
                     data_tmp['method'] = method;
                     data_tmp['scale'] = scale;
                     data_perf.append(data_tmp);
