@@ -8,6 +8,9 @@ import rpy2.robjects as robjects
 import rpy2.rinterface as rinterface
 r = robjects.r
 
+#resources
+from .listDict import listDict
+
 class r_calculate():
     def __init__(self):
         self.stats = importr('stats');
@@ -1415,6 +1418,7 @@ class r_calculate():
         else:
             print('missing values found!')
     def calculate_mvr(self,data_I,
+            pls_method_I = 'plsda',
             response_I = None,
             factor_I= "sample_name_abbreviation",
             ncomp = 5,
@@ -1449,7 +1453,7 @@ class r_calculate():
 
         where segments is the number of segments for cross validation of type "CV"
 
-        where methods = 
+        where methods = the algorithmn used 
             "kernelpls", "widekernelpls", "simpls": partial least squares regression
             "oscorespls": orthonogonal scores pls (uses the NIPALS algorithm)
                 O-PLS
@@ -1464,6 +1468,7 @@ class r_calculate():
 
         INPUT:
         data_I = [{}], list of data dicts from .csv or a database
+        pls_method_I = name of the pls method (e.g., plsda)
         response_I = column of the data dict to use as the response factor for PLS
                     (general PLS has not yet been implemented, so response_I is not currently used)
         factor_I = column of the data dict to use as the factor for (O)-PLS-DA
@@ -1482,47 +1487,20 @@ class r_calculate():
         # format into R matrix and list objects
         # convert data dict to matrix filling in missing values
         # with 'NA'
-        sns = []
-        cn = []
-        for d in data_I:
-                sns.append(d['sample_name_short']);      
-                cn.append(d['component_name']);
-        sns_sorted = sorted(set(sns))
-        cn_sorted = sorted(set(cn))
-        concentrations = ['NA' for r in range(len(sns_sorted)*len(cn_sorted))];
-        #experiment_ids = ['' for r in range(len(sns_sorted)*len(cn_sorted))];
-        #time_points = ['' for r in range(len(sns_sorted)*len(cn_sorted))];
-        cnt = 0;
-        cnt_bool = True;
-        cnt2_bool = True;
-        # factor
-        sna = [];
-        cgn = [];
-        factor = [];
-        #make the concentration matrix
-        for c in cn_sorted:
-                cnt2_bool = True;
-                for s in sns_sorted:
-                    for d in data_I:
-                        if d['sample_name_short'] == s and d['component_name'] == c:
-                            if d['calculated_concentration']:
-                                concentrations[cnt] = d['calculated_concentration'];
-                                #experiment_ids[cnt] = d['experiment_id'];
-                                #time_points[cnt] = d['time_point'];
-                                if cnt_bool:
-                                    sna.append(d['sample_name_abbreviation']);
-                                    factor.append(d[factor_I]);
-                                if cnt2_bool:
-                                    cgn.append(d['component_group_name']);
-                                    cnt2_bool = False;
-                                break;
-                    cnt = cnt+1
-                cnt_bool = False;
+        listdict = listDict(data_I);
+        concentrations,cn_sorted,sns_sorted,row_variables,column_variables = listdict.convert_listDict2dataMatrixList(
+            row_label_I='component_name',
+            column_label_I='sample_name_short',
+            value_label_I='calculated_concentration',
+            row_variables_I=['component_group_name'],
+            column_variables_I=[factor_I],
+            data_IO=[],
+            na_str_I="NA");
+        cgn = row_variables['component_group_name'];
+        factor = column_variables[factor_I];
         # check if there were any missing values in the data set in the first place
         mv = 0;
-        for c in concentrations:
-            if c=='NA':
-                mv += 1;
+        mv = listdict.count_missingValues(concentrations,na_str_I="NA");
         if mv==0:
             # Call to R
             try:
@@ -1690,13 +1668,18 @@ class r_calculate():
                     for c in range(scores_x.shape[1]):
                         data_tmp = {};
                         data_tmp['sample_name_short'] = sns_sorted[r];
-                        data_tmp['factor'] = factor[r];
+                        data_tmp['response_name'] = factor[r];
                         data_tmp['score'] = scores_x[r,c];
                         data_tmp['axis'] = c+1;
                         data_tmp['var_proportion'] = var_proportion[c];
                         data_tmp['var_cumulative'] = var_cumulative[c];
-                        data_tmp['method'] = method;
-                        data_tmp['scale'] = scale;
+                        data_tmp['pls_method'] = pls_method_I;
+                        data_tmp['pls_algorithm'] = method;
+                        data_tmp['pls_options'] = {'pls_scale':scale,
+                                                   'lower':lower,
+                                                   'upper':upper,
+                                                   'weights':weights,
+                            };
                         #data_tmp['experiment_id'] = experiment_ids[cnt];
                         #data_tmp['time_point'] = time_points[cnt];
                         data_scores.append(data_tmp);
@@ -1711,9 +1694,14 @@ class r_calculate():
                         data_tmp['component_group_name'] = cgn[r];
                         data_tmp['loadings'] = loadings_x[r,c]; #need to double check
                         data_tmp['axis'] = c+1;
-                        data_tmp['vip'] = vip_reduced[r];
-                        data_tmp['method'] = method;
-                        data_tmp['scale'] = scale;
+                        data_tmp['pls_vip'] = vip_reduced[r];
+                        data_tmp['pls_method'] = pls_method_I;
+                        data_tmp['pls_algorithm'] = method;
+                        data_tmp['pls_options'] = {'pls_scale':scale,
+                                                   'lower':lower,
+                                                   'upper':upper,
+                                                   'weights':weights,
+                            };
                         #data_tmp['experiment_id'] = experiment_ids[cnt];
                         #data_tmp['time_point'] = time_points[cnt];
                         data_loadings.append(data_tmp);
@@ -1722,15 +1710,21 @@ class r_calculate():
                 data_perf = [];
                 for i in range(len(msep_reduced)): #model
                     data_tmp = {};
-                    data_tmp['MSEP'] = msep_reduced[i];
-                    data_tmp['RMSEP'] = rmsep_reduced[i];
-                    data_tmp['R2'] = r2_reduced[i]
-                    data_tmp['Q2'] = q2_reduced[i];
-                    data_tmp['ncomp'] = i;
-                    data_tmp['validation'] = validation;
-                    data_tmp['segments'] = segments; #None if LOO
-                    data_tmp['method'] = method;
-                    data_tmp['scale'] = scale;
+                    data_tmp['pls_method'] = pls_method_I;
+                    data_tmp['pls_algorithm'] = method;
+                    data_tmp['pls_options'] = {'pls_scale':scale,
+                                                'lower':lower,
+                                                'upper':upper,
+                                                'weights':weights,
+                        };
+                    data_tmp['pls_msep'] = msep_reduced[i];
+                    data_tmp['pls_rmsep'] = rmsep_reduced[i];
+                    data_tmp['pls_r2'] = r2_reduced[i]
+                    data_tmp['pls_q2'] = q2_reduced[i];
+                    data_tmp['crossValidation_ncomp'] = i;
+                    data_tmp['crossValidation_method'] = validation;
+                    data_tmp['crossValidation_options'] = {'segments':scale,
+                        };
                     data_perf.append(data_tmp);
             except Exception as e:
                 print(e);
@@ -1805,3 +1799,28 @@ class r_calculate():
         except Exception as e:
             print(e);
             exit(-1);
+
+    def count_missingValues(self,values_I,na_str_I='NA'):
+        '''count the number of occurances of a missing value in a list of values
+        INPUT:
+        values_I = list of numeric values
+        na_str_I = string identifier of a missing value
+        OUTPUT:
+        mv_O = # of missing values
+        '''
+        mv_O = 0;
+        for c in values_I:
+            if c==na_str_I:
+                mv_O += 1;
+        return mv_O;
+
+    def initialize_dataMatrixList(self,nrows_I,ncolumns_I,na_str_I='NA'):
+        '''initialize dataMatrixList with missing values
+        INPUT:
+        nrows_I = int, # of rows of data
+        ncolumns_I - int, # of columns of data
+        na_str_I = string identifier of a missing value
+        OUTPUT:
+        dataMatrixList_O = list of na_str_I of length nrows_I*ncolumns_I'''
+        dataMatrixList_O = [na_str_I for r in range(nrows_I*ncolumns_I)];
+        return dataMatrixList_O;

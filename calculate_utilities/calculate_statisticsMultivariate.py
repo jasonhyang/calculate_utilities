@@ -131,38 +131,6 @@ class calculate_statisticsMultivariate():
         '''calculate SVD'''
         pass;
 
-    def convert_listDict2dataMatrix(self,data_I,row_label_I,column_label_I,
-                                    row_variables_I=[],column_variables_I=[]
-                                    ):
-        '''convert a list of dictionary rows to a numpy array
-        INPUT:
-        data_I = [{}]
-        row_label_I = column_id of the row labels
-        column_label_I = column_id of the column labels
-
-        OPTIONAL INPUT:
-        row_variables_I = list of keys to extract out with the rows
-        column_variables_I = list of keys to extract out with the columns
-
-        OUTPUT:
-        data_O = numpy array of shape (len(row_label_unique),len(column_label_unique))
-        row_labels_O = row labels of data_O
-        column_labels_O = column labels of data_O
-
-        OPTIONAL OUTPUT:
-        row_variables_O = {"row_variables_I[0]:[...],..."} where each list is of len(row_labels_O)
-        column_variables_O = {"row_variables_I[0]:[...],..."} where each list is of len(column_labels_O)
-        '''
-        pass;
-
-    def extract_arrayFromListDict(self,data_I,row_label_I,column_label_I):
-        '''convert a list of dictionary rows to a numpy array
-        INPUT:
-        
-        
-        '''
-        pass;
-
     def convert_factorVector2responseMatrix(self,factors_I):
         '''convert a list of factors to a response matrix
         NOTES: required to convert pls to pls-da
