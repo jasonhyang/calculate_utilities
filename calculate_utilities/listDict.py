@@ -1,3 +1,6 @@
+# system
+from copy import copy
+# Calculate utilities
 from .calculate_dependencies import *
 # Resources
 from io_utilities.base_importData import base_importData
@@ -184,6 +187,35 @@ class listDict():
             if c==na_str_I:
                 mv_O += 1;
         return mv_O;
+
+    def convert_listDict2ListDictValues(self,
+                    value_key_name_I = 'value',
+                    value_label_name_I = 'label',
+                    value_labels_I=['var_proportion','var_cumulative']):
+        '''linearize a list of dictionaries by seriesLabels
+        to a linearized version for a multiseries bi plot
+
+        INPUT:
+        value_labels_I = list of table columns to use as individual values
+        OUTPUT:
+        data_O = list of dictionaries of len(listDict)*len(value_labels_I)
+            with additional keys "value" = value of value_labels_I[i]
+                                 "value_label" = value_labels_I[i]
+        '''
+        data_I = self.listDict;
+        data_O = [];
+        # make the linearized list
+        for d in data_I: #iterate through the original copy
+            for vl in value_labels_I:
+                data_tmp = copy(d);
+                data_tmp[value_key_name_I]=d[vl];
+                data_tmp[value_label_name_I]=vl;
+                data_O.append(data_tmp);
+        # remove the value_label keys
+        for d in data_O:
+            for vl in value_labels_I:
+                del d[vl]
+        return data_O;
 
     def initialize_dataMatrixList(self,nrows_I,ncolumns_I,na_str_I='NA'):
         '''initialize dataMatrixList with missing values

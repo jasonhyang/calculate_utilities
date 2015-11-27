@@ -1515,6 +1515,7 @@ class r_calculate():
             na_str_I="NA");
         cgn = row_variables['component_group_name'];
         factor = column_variables[factor_I];
+        nfactors_unique,factors_unique = listdict.get_uniqueValues(factor_I);
         # check if there were any missing values in the data set in the first place
         mv = 0;
         mv = listdict.count_missingValues(concentrations,na_str_I="NA");
@@ -1774,10 +1775,42 @@ class r_calculate():
                     data_tmp['permutation_pvalue_corrected_description']=None;
                     data_tmp['permutation_options']={};
                     data_perf.append(data_tmp);
+                # extract out VIP
+                data_vip = [];
+                for r in range(vip.shape[0]):
+                    for c in range(vip.shape[1]):
+                        data_tmp = {};
+                        data_tmp['response_name'] = factors_unique[r];
+                        data_tmp['component_name'] = cn_sorted[c]; #need to double check
+                        data_tmp['component_group_name'] = cgn[c];
+                        data_tmp['pls_vip'] = vip[r,c];
+                        data_tmp['pls_model'] = pls_model_I;
+                        data_tmp['pls_method'] = method;
+                        data_tmp['pls_options'] = {'pls_scale':scale,
+                                                    'lower':lower,
+                                                    'upper':upper,
+                                                    'weights':weights,
+                            };
+                        data_vip.append(data_tmp);
+                for c in range(vip.shape[1]):
+                    data_tmp = {};
+                    data_tmp['response_name'] = 'all';
+                    data_tmp['component_name'] = cn_sorted[c]; #need to double check
+                    data_tmp['component_group_name'] = cgn[c];
+                    data_tmp['pls_vip'] = vip_reduced[c];
+                    data_tmp['pls_model'] = pls_model_I;
+                    data_tmp['pls_method'] = method;
+                    data_tmp['pls_options'] = {'pls_scale':scale,
+                                                'lower':lower,
+                                                'upper':upper,
+                                                'weights':weights,
+                        };
+                    data_vip.append(data_tmp);
+
             except Exception as e:
                 print(e);
                 exit(-1);
-            return data_scores,data_loadings,data_perf
+            return data_scores,data_loadings,data_perf,data_vip
         else:
             print('missing values found!')
     def calculate_decisionTree(self):
