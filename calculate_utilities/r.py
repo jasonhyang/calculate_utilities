@@ -128,6 +128,19 @@ class r_calculate():
             ans = robjects.r(r_statement);
             r_statement = ('require(caret)');
             ans = robjects.r(r_statement);
+        #RVAideMemoire (utilities for regression packages including pls and spls)
+        try:
+            r_statement = ('library("RVAideMemoire")');
+            ans = robjects.r(r_statement);
+            r_statement = ('require(RVAideMemoire)');
+            ans = robjects.r(r_statement);
+        except:
+            r_statement = ('install.packages("RVAideMemoire",dependencies=TRUE)');
+            ans = robjects.r(r_statement);
+            r_statement = ('library("RVAideMemoire")');
+            ans = robjects.r(r_statement);
+            r_statement = ('require(RVAideMemoire)');
+            ans = robjects.r(r_statement);
         #ropls (pls,opls,oplsda,plsda, pca, clustering)
         try:
             r_statement = ('library("ropls")');
@@ -1418,7 +1431,7 @@ class r_calculate():
         else:
             print('missing values found!')
     def calculate_mvr(self,data_I,
-            pls_method_I = 'plsda',
+            pls_model_I = 'PLS-DA',
             response_I = None,
             factor_I= "sample_name_abbreviation",
             ncomp = 5,
@@ -1432,7 +1445,9 @@ class r_calculate():
             lower = 0.5,
             upper = 0.5, 
             trunc_pow = "FALSE", 
-            weights = "NULL"):
+            weights = "NULL",
+            p_method = "fdr",
+            nperm = 999):
         '''Perform PLS(-DA)
 
         pls is used for principle component regression, partial least squares regression, and Canonical powered partial least squares regression
@@ -1440,6 +1455,7 @@ class r_calculate():
         pls is used for PLS-DA via converting the factor vector into a dummy response variable (the plsda function in caret automates this task)
         spls is used for sparse versions of pls
         caret provides utility functions for pls and spls (e.g., calculating the vip)
+        RVAideMemoire provides utility functions for cross validation and permutation
 
         mvr(formula, ncomp, Y.add, data, subset, na.action,
         method = pls.options()$mvralg,
@@ -1468,18 +1484,19 @@ class r_calculate():
 
         INPUT:
         data_I = [{}], list of data dicts from .csv or a database
-        pls_method_I = name of the pls method (e.g., plsda)
+        pls_model_I = name of the pls method (e.g., plsda)
         response_I = column of the data dict to use as the response factor for PLS
                     (general PLS has not yet been implemented, so response_I is not currently used)
         factor_I = column of the data dict to use as the factor for (O)-PLS-DA
                 (default = "sample_name_abbreviation")
 
-        TESTING:
-        import rpy2.rinterface as ri
-        dummy_array = numpy.array(ri.globalenv.get('dummy'));
-        concentrations_array = numpy.array(ri.globalenv.get('concentrations_m'));
-
-        STATUS: Working, need to finalize extracting the scores, loadings, and model performance for output
+        TODO: add in permutation test
+        MVA.test(X, Y, cmv = FALSE, ncomp = 5, kout = 7, kinn = 8, model = c("PLSR",
+            "CPPLS", "PLS-DA", "PPLS-DA", "LDA", "QDA", "PLS-DA/LDA", "PLS-DA/QDA",
+            "PPLS-DA/LDA","PPLS-DA/QDA"), Q2diff = 0.05, lower = 0.5, upper = 0.5,
+            Y.add = NULL, weights = rep(1, nrow(X)), set.prior = FALSE,
+            crit.DA = c("plug-in", "predictive", "debiased"), p.method = "fdr",
+            nperm = 999,...)
 
         '''
         
@@ -1504,6 +1521,9 @@ class r_calculate():
         if mv==0:
             # Call to R
             try:
+                # clear the workspace
+                r_statement = ('rm(list = ls())');
+                ans = robjects.r(r_statement);
                 # convert lists to R matrix
                 concentrations_r = '';
                 for c in concentrations:
@@ -1641,25 +1661,46 @@ class r_calculate():
                 ans = robjects.r(r_statement);
                 sse = numpy.array(ans.rx2('SSE'))[0];
                 sst = numpy.array(ans.rx2('SST'))[0];
-                q2 = 1-(sse/sst);
-                sse_reduced = numpy.zeros_like(sst);
-                sst_reduced = numpy.zeros_like(sst);
+                #q2 = 1-(sse/sst);
+                sse_reduced = numpy.zeros_like(sse[0,:]);
+                sst_reduced = numpy.zeros_like(sse[0,:]);
                 for j in range(sse.shape[1]):
                     sse_reduced[j]=sse[:,j].sum();
-                    sst_reduced[j]=sse.shape[0]*sst[j];
+                    sst_reduced[j]=sse.shape[0]*sst[0];
                 q2_reduced = 1-(sse_reduced/sst_reduced);
                 #calculate the R2
                 r_statement = ('mvrValstats(result, estimate="train")');
                 ans = robjects.r(r_statement);
                 sse = numpy.array(ans.rx2('SSE'))[0];
                 sst = numpy.array(ans.rx2('SST'))[0];
-                r2 = 1-(sse/sst);
-                sse_reduced = numpy.zeros_like(sst);
-                sst_reduced = numpy.zeros_like(sst);
+                #r2 = 1-(sse/sst);
+                sse_reduced = numpy.zeros_like(sse[0,:]);
+                sst_reduced = numpy.zeros_like(sse[0,:]);
                 for j in range(sse.shape[1]):
                     sse_reduced[j]=sse[:,j].sum();
-                    sst_reduced[j]=sse.shape[0]*sst[j];
+                    sst_reduced[j]=sse.shape[0]*sst[0];
                 r2_reduced = 1-(sse_reduced/sst_reduced);
+                ## perform permutation test
+                #r_statement = ('\
+                #    test = MVA.test(%s, %s, cmv = %s,  ncomp = %s,\
+                #    kout = %s, kinn = %s,\
+                #    model = "%s",\
+                #    scale = %s, validation = "%s", segments = %s,\
+                #    lower = %s, upper = %s,\
+                #    weights = %s,\
+                #    nperm = %s)'\
+                #            %('concentrations_mt','factors_f',"TRUE",
+                #              ncomp,
+                #              segments,segments,
+                #              pls_model_I,
+                #              scale,validation,segments,
+                #              #method, , method = "%s"
+                #              lower,upper,
+                #              weights,
+                #              nperm ));
+                #ans = robjects.r(r_statement);
+                #pvalue_corrected = numpy.array(ans.rx2('p.value'));
+                #pvalue_method = numpy.array(ans.rx2('p.adjust.method'));
 
                 # extract out scores
                 data_scores = [];
@@ -1671,10 +1712,10 @@ class r_calculate():
                         data_tmp['response_name'] = factor[r];
                         data_tmp['score'] = scores_x[r,c];
                         data_tmp['axis'] = c+1;
-                        data_tmp['var_proportion'] = var_proportion[c];
-                        data_tmp['var_cumulative'] = var_cumulative[c];
-                        data_tmp['pls_method'] = pls_method_I;
-                        data_tmp['pls_algorithm'] = method;
+                        data_tmp['var_proportion'] = var_proportion[c]/100.0; #remove the percent
+                        data_tmp['var_cumulative'] = var_cumulative[c]/100.0; #remove the percent
+                        data_tmp['pls_model'] = pls_model_I;
+                        data_tmp['pls_method'] = method;
                         data_tmp['pls_options'] = {'pls_scale':scale,
                                                    'lower':lower,
                                                    'upper':upper,
@@ -1695,8 +1736,8 @@ class r_calculate():
                         data_tmp['loadings'] = loadings_x[r,c]; #need to double check
                         data_tmp['axis'] = c+1;
                         data_tmp['pls_vip'] = vip_reduced[r];
-                        data_tmp['pls_method'] = pls_method_I;
-                        data_tmp['pls_algorithm'] = method;
+                        data_tmp['pls_model'] = pls_model_I;
+                        data_tmp['pls_method'] = method;
                         data_tmp['pls_options'] = {'pls_scale':scale,
                                                    'lower':lower,
                                                    'upper':upper,
@@ -1710,8 +1751,8 @@ class r_calculate():
                 data_perf = [];
                 for i in range(len(msep_reduced)): #model
                     data_tmp = {};
-                    data_tmp['pls_method'] = pls_method_I;
-                    data_tmp['pls_algorithm'] = method;
+                    data_tmp['pls_model'] = pls_model_I;
+                    data_tmp['pls_method'] = method;
                     data_tmp['pls_options'] = {'pls_scale':scale,
                                                 'lower':lower,
                                                 'upper':upper,
@@ -1725,6 +1766,13 @@ class r_calculate():
                     data_tmp['crossValidation_method'] = validation;
                     data_tmp['crossValidation_options'] = {'segments':scale,
                         };
+                    data_tmp['permutation_nperm']=nperm;
+                    data_tmp['permutation_pvalue']=None;
+                    #data_tmp['permutation_pvalue_corrected']=pvalue_corrected[i];
+                    #data_tmp['permutation_pvalue_corrected_description']=pvalue_method[i];
+                    data_tmp['permutation_pvalue_corrected']=None;
+                    data_tmp['permutation_pvalue_corrected_description']=None;
+                    data_tmp['permutation_options']={};
                     data_perf.append(data_tmp);
             except Exception as e:
                 print(e);
