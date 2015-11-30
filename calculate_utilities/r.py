@@ -15,7 +15,10 @@ class r_calculate():
     def __init__(self):
         self.stats = importr('stats');
         self.tools = importr('tools');
-        self._import_RPackages();
+        try:
+            self._import_RPackages();
+        except Exception as e:
+            print(e);
 
     def _import_RPackages(self):
         '''load required R packages
@@ -127,7 +130,7 @@ class r_calculate():
             r_statement = ('library("caret")');
             ans = robjects.r(r_statement);
             r_statement = ('require(caret)');
-            ans = robjects.r(r_statement);
+            ans = robjects.r(r_statement);   
         #RVAideMemoire (utilities for regression packages including pls and spls)
         try:
             r_statement = ('library("RVAideMemoire")');
@@ -170,7 +173,7 @@ class r_calculate():
             r_statement = ('library("pcaMethods")');
             ans = robjects.r(r_statement);
             r_statement = ('require(pcaMethods)');
-            ans = robjects.r(r_statement);            
+            ans = robjects.r(r_statement);         
     # calls to R
     def calculate_ave_CV_R(self,data_I):
         # calculate average and CV of data
@@ -1496,7 +1499,8 @@ class r_calculate():
             "PPLS-DA/LDA","PPLS-DA/QDA"), Q2diff = 0.05, lower = 0.5, upper = 0.5,
             Y.add = NULL, weights = rep(1, nrow(X)), set.prior = FALSE,
             crit.DA = c("plug-in", "predictive", "debiased"), p.method = "fdr",
-            nperm = 999,...)
+            nperm = 999,...)
+
 
         '''
         
